@@ -6,7 +6,7 @@ export const msalConfig = {
     // work/school Microsoft accounts instead of locking to one tenant
     authority: "https://login.microsoftonline.com/common",
 
-    redirectUri: "http://localhost:3000",
+    redirectUri: "https://cybersec-hub-production-9802.up.railway.app",
   },
 };
 

@@ -1,0 +1,124 @@
+{
+  "identity": {
+    "name": "E1_CYBER_TACTICAL",
+    "archetype": "ARCHETYPE_7_ELECTRIC_NEON_MODIFIED",
+    "vibe": "Tactical, High-Precision, Dangerous, Secure",
+    "principles": [
+      "Density over Whitespace (Dashboard context)",
+      "Red is Alarm, Green is Safe, Black is Void",
+      "No Soft Shadows - Only Glows and Outlines",
+      "Glassmorphism > Solid Opacity",
+      "Monospace is King for Data"
+    ]
+  },
+  "typography": {
+    "font_family": {
+      "heading": "\"Rajdhani\", sans-serif",
+      "body": "\"Inter\", sans-serif",
+      "mono": "\"JetBrains Mono\", monospace"
+    },
+    "import_url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Rajdhani:wght@500;600;700&display=swap",
+    "usage": {
+      "h1": "font-heading font-bold text-5xl uppercase tracking-wider text-white",
+      "h2": "font-heading font-semibold text-3xl uppercase tracking-wide text-white/90",
+      "h3": "font-heading font-medium text-xl text-white/80",
+      "body": "font-body text-zinc-400 text-sm leading-relaxed",
+      "label": "font-mono text-xs uppercase tracking-widest text-zinc-500",
+      "data": "font-mono text-sm text-red-500 font-bold"
+    }
+  },
+  "colors": {
+    "palette": {
+      "background": "#050505",
+      "surface": "#09090B",
+      "surface_highlight": "#18181B",
+      "border": "#27272A",
+      "primary": "#FF3B30",
+      "primary_dim": "#7F1D1D",
+      "success": "#10B981",
+      "warning": "#F59E0B",
+      "muted": "#52525B",
+      "text_main": "#FAFAFA",
+      "text_muted": "#A1A1AA"
+    },
+    "semantic": {
+      "bg_app": "bg-[#050505]",
+      "bg_card": "bg-zinc-950/50 backdrop-blur-md border border-white/5",
+      "text_primary": "text-white",
+      "text_secondary": "text-zinc-400",
+      "accent_danger": "text-[#FF3B30]",
+      "accent_success": "text-[#10B981]",
+      "border_default": "border-white/10",
+      "border_active": "border-[#FF3B30]/50"
+    }
+  },
+  "layout": {
+    "grid_system": "Bento Grid (Mode B: High Density)",
+    "container": "max-w-[1600px] mx-auto p-6",
+    "spacing": {
+      "section_gap": "gap-6",
+      "card_padding": "p-5",
+      "internal_gap": "gap-3"
+    },
+    "radius": {
+      "default": "rounded-none",
+      "sm": "rounded-sm",
+      "md": "rounded-md"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-[#FF3B30] hover:bg-[#FF3B30]/90 text-white font-mono uppercase tracking-wider text-xs px-6 py-2 rounded-sm transition-all duration-200 hover:shadow-[0_0_20px_rgba(255,59,48,0.3)]",
+      "secondary": "bg-transparent border border-white/20 hover:border-white/50 text-white font-mono uppercase text-xs px-6 py-2 rounded-sm",
+      "ghost": "text-zinc-400 hover:text-white hover:bg-white/5 font-mono text-xs px-4 py-2"
+    },
+    "cards": {
+      "dashboard": "bg-zinc-950/40 backdrop-blur-xl border border-white/10 hover:border-[#FF3B30]/30 transition-colors duration-300 relative overflow-hidden group",
+      "metric": "flex flex-col gap-1 p-4 bg-zinc-900/20 border-l-2 border-[#FF3B30] rounded-r-sm"
+    },
+    "inputs": {
+      "default": "bg-zinc-950/50 border border-white/10 focus:border-[#FF3B30] text-white font-mono text-sm px-4 py-2 rounded-sm outline-none transition-colors placeholder:text-zinc-600"
+    },
+    "status_badges": {
+      "active": "bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/20 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider rounded-sm",
+      "danger": "bg-[#FF3B30]/10 text-[#FF3B30] border border-[#FF3B30]/20 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider rounded-sm",
+      "warning": "bg-[#F59E0B]/10 text-[#F59E0B] border border-[#F59E0B]/20 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider rounded-sm",
+      "neutral": "bg-zinc-800 text-zinc-400 border border-zinc-700 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider rounded-sm"
+    }
+  },
+  "motion": {
+    "types": [
+      "Glitch Effect on Hover",
+      "Scanline Overlay (CSS)",
+      "Staggered Entrance"
+    ],
+    "classes": {
+      "hover_glow": "hover:shadow-[0_0_15px_rgba(255,59,48,0.15)]",
+      "scanline": "after:content-[''] after:absolute after:inset-0 after:bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] after:z-50 after:bg-[length:100%_2px,3px_100%] after:pointer-events-none"
+    }
+  },
+  "visual_assets": {
+    "icons": "Lucide React (Use slim strokes, 1.5px)",
+    "charts": "Recharts (Custom Tooltip: bg-zinc-950 border-white/10)",
+    "maps": "Simple SVG Vector Map (Dotted pattern preferred)"
+  },
+  "instructions_to_main_agent": [
+    "IMPORT FONTS FIRST: Add the Google Fonts link to public/index.html or @import in index.css.",
+    "FORCE DARK MODE: The app must default to dark mode. No light mode toggle needed for this persona.",
+    "USE GRID LAYOUTS: Dashboard pages must use the 'Bento' grid system defined in layout.grid_system.",
+    "NO ROUNDED CORNERS: Use 'rounded-sm' or 'rounded-none' for a sharp, tactical look. Avoid 'rounded-xl'.",
+    "DATA DENSITY: Do not use excessive padding. This is a pro tool. Use 'p-4' or 'p-5' for cards.",
+    "ALWAYS USE CUSTOM SCROLLBAR: Hide default browser scrollbar, use a thin styled one.",
+    "FORBIDDEN: Do not use purple, pink, or gradients unless it's a 'Heatmap'. Stick to Red/Black/Grey/Green.",
+    "TESTING: Add data-testid to all inputs, buttons, and result cards."
+  ],
+  "universal_guidelines": [
+    "You tend to converge toward generic outputs. Avoid this.",
+    "Create depth through layered design elements (z-index, borders).",
+    "Use glass-morphism effects with backdrop filters.",
+    "Every interaction needs micro-animations (hover states, focus).",
+    "Use 2-3x more spacing in marketing sections, but keep dashboard sections dense.",
+    "Use sonner for toasts.",
+    "Prioritize Shadcn components but customize them to match the 'Cyber Tactical' aesthetic (remove radius, change ring color)."
+  ]
+}

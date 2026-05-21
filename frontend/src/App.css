@@ -1,0 +1,53 @@
+/* Custom App Styles - Minimal to avoid conflicts */
+.App {
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Glitch Effect Utility */
+.glitch-text {
+  position: relative;
+}
+
+.glitch-text::before,
+.glitch-text::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.glitch-text::before {
+  left: 2px;
+  text-shadow: -1px 0 #ff00c1;
+  clip: rect(44px, 450px, 56px, 0);
+  animation: glitch-anim 5s infinite linear alternate-reverse;
+}
+
+.glitch-text::after {
+  left: -2px;
+  text-shadow: -1px 0 #00fff9;
+  clip: rect(44px, 450px, 56px, 0);
+  animation: glitch-anim2 5s infinite linear alternate-reverse;
+}
+
+@keyframes glitch-anim {
+  0% { clip: rect(21px, 9999px, 89px, 0); }
+  20% { clip: rect(6px, 9999px, 83px, 0); }
+  40% { clip: rect(82px, 9999px, 9px, 0); }
+  60% { clip: rect(31px, 9999px, 20px, 0); }
+  80% { clip: rect(69px, 9999px, 12px, 0); }
+  100% { clip: rect(3px, 9999px, 57px, 0); }
+}
+
+@keyframes glitch-anim2 {
+  0% { clip: rect(48px, 9999px, 2px, 0); }
+  20% { clip: rect(10px, 9999px, 54px, 0); }
+  40% { clip: rect(52px, 9999px, 12px, 0); }
+  60% { clip: rect(78px, 9999px, 49px, 0); }
+  80% { clip: rect(3px, 9999px, 91px, 0); }
+  100% { clip: rect(27px, 9999px, 3px, 0); }
+}

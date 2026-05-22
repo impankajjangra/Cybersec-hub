@@ -1,8 +1,8 @@
 import random
-import smtplib
 import os
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import urllib.request
+import urllib.error
+import json
 from pathlib import Path
 
 
@@ -30,11 +30,11 @@ def generate_otp() -> str:
 
 async def send_email_otp(to_email: str, otp: str, purpose: str = "verification") -> bool:
 
-    smtp_email = os.environ.get("SMTP_EMAIL", "").strip()
-    smtp_password = os.environ.get("SMTP_PASSWORD", "").strip()
+    sendgrid_key = os.environ.get("SENDGRID_API_KEY", "").strip()
+    from_email = os.environ.get("SMTP_EMAIL", "").strip()
 
-    if not smtp_email or not smtp_password:
-        print(f"[OTP FALLBACK] SMTP not set — OTP for {to_email}: {otp}")
+    if not sendgrid_key or not from_email:
+        print(f"[OTP FALLBACK] SendGrid not configured — OTP for {to_email}: {otp}")
         return True
 
     subject = "CyberSec Hub – Your Verification OTP"
@@ -46,13 +46,7 @@ async def send_email_otp(to_email: str, otp: str, purpose: str = "verification")
         heading = "Password Reset"
         subtext = "Use the OTP below to reset your password."
 
-    try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"] = f"CyberSec Hub <{smtp_email}>"
-        msg["To"] = to_email
-
-        html_body = f"""
+    html_body = f"""
 <!DOCTYPE html>
 <html>
 <body style="margin:0;padding:0;background:#111111;font-family:Arial,sans-serif;">
@@ -99,24 +93,34 @@ async def send_email_otp(to_email: str, otp: str, purpose: str = "verification")
   </table>
 </body>
 </html>
-        """
+    """
 
-        msg.attach(MIMEText(html_body, "html"))
+    payload = {
+        "personalizations": [{"to": [{"email": to_email}]}],
+        "from": {"email": from_email, "name": "CyberSec Hub"},
+        "subject": subject,
+        "content": [{"type": "text/html", "value": html_body}]
+    }
 
-        # FIX: Use port 587 with STARTTLS — Railway blocks port 465 (SSL)
-        print(f"[OTP] Connecting to smtp.gmail.com:587 ...")
-        with smtplib.SMTP("smtp.gmail.com", 587) as server:
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
-            server.login(smtp_email, smtp_password)
-            server.sendmail(smtp_email, to_email, msg.as_string())
+    try:
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            "https://api.sendgrid.com/v3/mail/send",
+            data=data,
+            headers={
+                "Authorization": f"Bearer {sendgrid_key}",
+                "Content-Type": "application/json"
+            },
+            method="POST"
+        )
+        with urllib.request.urlopen(req) as response:
+            print(f"[OTP] SendGrid response: {response.status}")
+            print(f"[OTP] Email sent to {to_email}")
+            return True
 
-        print(f"[OTP] Email sent to {to_email}")
-        return True
-
-    except smtplib.SMTPAuthenticationError as e:
-        print(f"[OTP ERROR] Auth failed: {e}")
+    except urllib.error.HTTPError as e:
+        body = e.read().decode()
+        print(f"[OTP ERROR] SendGrid HTTP {e.code}: {body}")
         print(f"[OTP FALLBACK] OTP for {to_email}: {otp}")
         return True
 

@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Activity, Radar, Search, Shield, ShieldOff, History, ChevronLeft, ChevronRight, LogOut, Menu, X } from 'lucide-react';
 
-const Sidebar = ({ isOpen, setIsOpen }) => {
+const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
   const location = useLocation();
 
   const menuItems = [
@@ -14,58 +14,109 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     { path: '/logout', icon: LogOut, label: 'Logout' },
   ];
 
+  // On mobile: sidebar is 256px wide but slides in/out via transform
+  // On desktop: sidebar is always visible, 256px open or 64px collapsed
+  const sidebarStyle = isMobile ? {
+    position: 'fixed',
+    left: 0,
+    top: 0,
+    height: '100vh',
+    width: '256px',
+    transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
+    transition: 'transform 0.3s',
+    zIndex: 50,
+    backgroundColor: 'rgba(9,9,11,0.97)',
+    borderRight: '1px solid rgba(255,255,255,0.1)',
+  } : {
+    position: 'fixed',
+    left: 0,
+    top: 0,
+    height: '100vh',
+    width: isOpen ? '256px' : '64px',
+    transition: 'width 0.3s',
+    zIndex: 50,
+    backgroundColor: 'rgba(9,9,11,0.97)',
+    borderRight: '1px solid rgba(255,255,255,0.1)',
+  };
+
   return (
     <>
-      {/* Mobile overlay — clicking it closes sidebar */}
-      {isOpen && (
+      {/* Dark overlay on mobile when sidebar open */}
+      {isMobile && isOpen && (
         <div
-          className="fixed inset-0 bg-black/60 z-40 lg:hidden"
           onClick={() => setIsOpen(false)}
+          style={{
+            position: 'fixed', inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            zIndex: 40,
+          }}
         />
       )}
 
-      {/* Mobile hamburger button — only shows on small screens */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-zinc-950 border border-white/10 rounded-sm text-white"
-      >
-        {isOpen ? <X size={20} /> : <Menu size={20} />}
-      </button>
+      {/* Mobile hamburger */}
+      {isMobile && (
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          style={{
+            position: 'fixed', top: 12, left: 12,
+            zIndex: 60, padding: '8px',
+            backgroundColor: '#0a0a0a',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '4px',
+            color: 'white',
+            cursor: 'pointer',
+          }}
+        >
+          {isOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+      )}
 
       {/* Sidebar */}
-      <div
-        className={`
-          fixed left-0 top-0 h-screen bg-zinc-950/95 backdrop-blur-xl border-r border-white/10 z-50 transition-all duration-300
-          ${isOpen ? 'w-64 translate-x-0' : 'w-64 -translate-x-full'}
-          lg:translate-x-0
-          ${isOpen ? 'lg:w-64' : 'lg:w-16'}
-        `}
-      >
-        <div className="flex flex-col h-full">
-          <div className="p-4 border-b border-white/10 flex items-center justify-between">
-            {/* Show title when open */}
-            <h1 className={`font-heading text-xl uppercase tracking-wider text-[#FF3B30] transition-all duration-300 ${isOpen ? 'opacity-100' : 'lg:opacity-0 lg:w-0 overflow-hidden'}`}>
-              CYBER<span className="text-white">SEC</span>
-            </h1>
+      <div style={sidebarStyle}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
 
-            {/* Toggle button — only on desktop */}
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="hidden lg:flex p-2 hover:bg-white/5 rounded-sm transition-colors"
-            >
-              {isOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
-            </button>
+          {/* Header */}
+          <div style={{
+            padding: '16px',
+            borderBottom: '1px solid rgba(255,255,255,0.1)',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            minHeight: '64px',
+          }}>
+            {isOpen && (
+              <h1 style={{ fontSize: '18px', fontWeight: 'bold', letterSpacing: '3px', margin: 0 }}>
+                <span style={{ color: '#FF3B30' }}>CYBER</span>
+                <span style={{ color: 'white' }}>SEC</span>
+              </h1>
+            )}
 
-            {/* Close button — only on mobile */}
-            <button
-              onClick={() => setIsOpen(false)}
-              className="lg:hidden p-2 hover:bg-white/5 rounded-sm"
-            >
-              <X size={20} />
-            </button>
+            {/* Desktop toggle */}
+            {!isMobile && (
+              <button
+                onClick={() => setIsOpen(!isOpen)}
+                style={{
+                  padding: '8px', cursor: 'pointer',
+                  backgroundColor: 'transparent',
+                  border: 'none', color: 'white',
+                  marginLeft: isOpen ? 'auto' : '0',
+                }}
+              >
+                {isOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
+              </button>
+            )}
+
+            {/* Mobile close */}
+            {isMobile && isOpen && (
+              <button
+                onClick={() => setIsOpen(false)}
+                style={{ padding: '8px', cursor: 'pointer', backgroundColor: 'transparent', border: 'none', color: 'white' }}
+              >
+                <X size={20} />
+              </button>
+            )}
           </div>
 
-          <nav className="flex-1 p-2">
+          {/* Nav items */}
+          <nav style={{ flex: 1, padding: '8px', overflowY: 'auto' }}>
             {menuItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
@@ -74,33 +125,56 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                 <Link
                   key={item.path}
                   to={item.path}
-                  onClick={() => {
-                    // Close sidebar on mobile after clicking a link
-                    if (window.innerWidth < 1024) setIsOpen(false);
+                  onClick={() => { if (isMobile) setIsOpen(false); }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '12px',
+                    marginBottom: '4px',
+                    borderRadius: '2px',
+                    textDecoration: 'none',
+                    color: isActive ? '#FF3B30' : '#a1a1aa',
+                    backgroundColor: isActive ? 'rgba(255,59,48,0.1)' : 'transparent',
+                    borderLeft: isActive ? '2px solid #FF3B30' : '2px solid transparent',
+                    transition: 'all 0.2s',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
                   }}
-                  className={`flex items-center gap-3 px-3 py-3 mb-1 rounded-sm transition-all duration-200 ${
-                    isActive
-                      ? 'bg-[#FF3B30]/10 text-[#FF3B30] border-l-2 border-[#FF3B30]'
-                      : 'text-zinc-400 hover:text-white hover:bg-white/5'
-                  }`}
                 >
-                  <Icon size={20} strokeWidth={1.5} className="shrink-0" />
-                  <span className={`font-mono text-xs uppercase tracking-wider transition-all duration-300 ${isOpen ? 'opacity-100' : 'lg:opacity-0 lg:w-0 overflow-hidden'}`}>
-                    {item.label}
-                  </span>
+                  <Icon size={20} strokeWidth={1.5} style={{ flexShrink: 0 }} />
+                  {isOpen && (
+                    <span style={{
+                      fontFamily: 'monospace',
+                      fontSize: '11px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '1.5px',
+                    }}>
+                      {item.label}
+                    </span>
+                  )}
                 </Link>
               );
             })}
           </nav>
 
-          <div className="p-4 border-t border-white/10">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-[#10B981] rounded-full animate-pulse shrink-0"></div>
-              <span className={`font-mono text-xs text-zinc-500 uppercase transition-all duration-300 ${isOpen ? 'opacity-100' : 'lg:opacity-0 lg:w-0 overflow-hidden'}`}>
-                System Online
-              </span>
+          {/* Footer */}
+          <div style={{ padding: '16px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{
+                width: '8px', height: '8px',
+                backgroundColor: '#10B981',
+                borderRadius: '50%',
+                flexShrink: 0,
+              }} />
+              {isOpen && (
+                <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#71717a', textTransform: 'uppercase' }}>
+                  System Online
+                </span>
+              )}
             </div>
           </div>
+
         </div>
       </div>
     </>

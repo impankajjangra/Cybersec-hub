@@ -36,7 +36,7 @@ const PublicRoute = ({ children }) => {
   return children;
 };
 
-function Layout({ sidebarOpen, setSidebarOpen, children }) {
+function Layout({ sidebarOpen, setSidebarOpen, isMobile, children }) {
   const location = useLocation();
 
   const hideSidebar =
@@ -49,18 +49,20 @@ function Layout({ sidebarOpen, setSidebarOpen, children }) {
 
   if (hideSidebar) return <>{children}</>;
 
-  return (
-    <div className="flex min-h-screen">
-      <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
+  // On mobile: content always full width, sidebar overlays
+  // On desktop: content shifts based on sidebar width
+  const contentMargin = isMobile ? 0 : sidebarOpen ? 256 : 64;
 
-      {/* Main content — on mobile takes full width, on desktop shifts right */}
-      <div
-        className={`
-          flex-1 min-w-0 transition-all duration-300
-          pt-16 lg:pt-0
-          lg:${sidebarOpen ? 'ml-64' : 'ml-16'}
-        `}
-      >
+  return (
+    <div style={{ display: 'flex', minHeight: '100vh' }}>
+      <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} isMobile={isMobile} />
+      <div style={{
+        flex: 1,
+        marginLeft: contentMargin,
+        transition: 'margin-left 0.3s',
+        minWidth: 0,
+        paddingTop: isMobile ? '56px' : '0',
+      }}>
         {children}
       </div>
     </div>
@@ -68,14 +70,15 @@ function Layout({ sidebarOpen, setSidebarOpen, children }) {
 }
 
 function App() {
-  // Start sidebar closed on mobile, open on desktop
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
 
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 1024) {
-        setSidebarOpen(false);
-      }
+      const mobile = window.innerWidth < 1024;
+      setIsMobile(mobile);
+      if (mobile) setSidebarOpen(false);
+      else setSidebarOpen(true);
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -84,7 +87,7 @@ function App() {
   return (
     <div className="App min-h-screen bg-[#050505] text-white">
       <BrowserRouter>
-        <Layout sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen}>
+        <Layout sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} isMobile={isMobile}>
           <Routes>
             <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
             <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />

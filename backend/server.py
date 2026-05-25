@@ -476,65 +476,129 @@ async def osint_lookup(request: OSINTRequest, current_user: str = Depends(get_cu
 @api_router.post("/threats/detect")
 async def detect_threats(request: ThreatDetectionRequest, current_user: str = Depends(get_current_user)):
     try:
-        # FIX 1: only allow threat detection on user's own scans
         scan = await db.scans.find_one({"id": request.scan_id, "user_id": current_user}, {"_id": 0})
         if not scan:
             raise HTTPException(status_code=404, detail="Scan not found")
 
         threats = []
-        HIGH_RISK_PORTS = [21, 23, 445, 3389]
-        MEDIUM_RISK_PORTS = [22, 80, 8080]
+
+        # High/medium/critical risk ports
+        CRITICAL_PORTS = [23, 445, 3389, 1433, 3306, 5432, 27017, 6379]  # telnet, smb, rdp, db ports
+        HIGH_RISK_PORTS = [21, 22, 80, 8080, 8443, 5900, 1521]            # ftp, ssh, http, vnc, oracle
+        MEDIUM_RISK_PORTS = [25, 53, 110, 143, 161, 389, 512, 513, 514]   # smtp, dns, pop, imap, snmp, ldap
+
+        PORT_SERVICES = {
+            21: "FTP", 22: "SSH", 23: "Telnet", 25: "SMTP",
+            53: "DNS", 80: "HTTP", 110: "POP3", 143: "IMAP",
+            161: "SNMP", 389: "LDAP", 443: "HTTPS", 445: "SMB",
+            512: "rexec", 513: "rlogin", 514: "rsh",
+            1433: "MSSQL", 1521: "Oracle", 3306: "MySQL",
+            3389: "RDP", 5432: "PostgreSQL", 5900: "VNC",
+            6379: "Redis", 8080: "HTTP-Alt", 8443: "HTTPS-Alt",
+            27017: "MongoDB"
+        }
 
         if scan.get("results") and scan["results"].get("hosts"):
             for host, host_data in scan["results"]["hosts"].items():
-                open_ports_count = 0
-                for proto, ports in host_data.get("protocols", {}).items():
-                    for port, port_info in ports.items():
-                        port = int(port)
-                        if port_info["state"] == "open":
-                            open_ports_count += 1
-                            risk_score = 0
-                            classification = "Normal"
-                            if port in HIGH_RISK_PORTS:
-                                risk_score += 60
-                                classification = "High Risk Service"
-                            elif port in MEDIUM_RISK_PORTS:
-                                risk_score += 30
-                                classification = "Moderate Exposure"
-                            features = np.array([[port, 1, 100, 0]])
-                            prediction = rf_model.predict(features)[0]
-                            confidence = float(np.max(rf_model.predict_proba(features)))
-                            if prediction > 0:
-                                risk_score += 20
-                            threat_level = "high" if risk_score >= 70 else "medium" if risk_score >= 40 else "low"
-                            if threat_level != "low":
-                                threats.append({
-                                    "host": host, "port": port,
-                                    "service": port_info.get("name", "unknown"),
-                                    "classification": classification,
-                                    "confidence": confidence,
-                                    "risk_score": risk_score,
-                                    "threat_level": threat_level
-                                })
-                if open_ports_count > 5:
+
+                # --- 1. CVE-based threats (from Shodan InternetDB) ---
+                vulns = host_data.get("vulns", [])
+                if vulns:
+                    # Each CVE is a critical threat
+                    cve_risk = min(40 + len(vulns) * 2, 100)
                     threats.append({
-                        "host": host, "port": "multiple", "service": "multiple",
-                        "classification": "Multiple Open Ports Detected",
-                        "confidence": 0.9, "risk_score": 80, "threat_level": "high"
+                        "host": host,
+                        "port": "multiple",
+                        "service": "multiple",
+                        "classification": f"{len(vulns)} Known CVE Vulnerabilities Found",
+                        "confidence": 0.95,
+                        "risk_score": cve_risk,
+                        "threat_level": "critical" if len(vulns) >= 10 else "high",
+                        "cves": vulns[:10]  # show top 10
                     })
 
-        overall_threat_level = (
-            "high" if any(t["threat_level"] == "high" for t in threats) else
-            "medium" if any(t["threat_level"] == "medium" for t in threats) else "low"
-        )
+                # --- 2. Port-based threats ---
+                all_ports = []
+                for proto, ports in host_data.get("protocols", {}).items():
+                    for port_str, port_info in ports.items():
+                        port = int(port_str)
+                        all_ports.append(port)
+
+                        risk_score = 0
+                        classification = "Open Port"
+
+                        if port in CRITICAL_PORTS:
+                            risk_score = 90
+                            classification = f"Critical Risk Service ({PORT_SERVICES.get(port, str(port))})	- Exposed to internet"
+                            threat_level = "critical"
+                        elif port in HIGH_RISK_PORTS:
+                            risk_score = 65
+                            classification = f"High Risk Service ({PORT_SERVICES.get(port, str(port))})	- Should be restricted"
+                            threat_level = "high"
+                        elif port in MEDIUM_RISK_PORTS:
+                            risk_score = 45
+                            classification = f"Medium Risk Service ({PORT_SERVICES.get(port, str(port))})	- Review access control"
+                            threat_level = "medium"
+                        else:
+                            # Use ML model for unknown ports
+                            features = np.array([[port, 1, 100, 0]])
+                            prediction = rf_model.predict(features)[0]
+                            confidence_ml = float(np.max(rf_model.predict_proba(features)))
+                            if prediction > 0:
+                                risk_score = 35
+                                classification = "Suspicious Port - ML Detection"
+                                threat_level = "medium"
+                            else:
+                                continue  # skip low risk ports
+
+                        features = np.array([[port, 1, 100, 0]])
+                        confidence = float(np.max(rf_model.predict_proba(features)))
+
+                        threats.append({
+                            "host": host,
+                            "port": port,
+                            "service": PORT_SERVICES.get(port, port_info.get("name", "unknown")),
+                            "classification": classification,
+                            "confidence": round(confidence, 2),
+                            "risk_score": risk_score,
+                            "threat_level": threat_level
+                        })
+
+                # --- 3. Too many open ports ---
+                if len(all_ports) > 10:
+                    threats.append({
+                        "host": host,
+                        "port": "multiple",
+                        "service": "multiple",
+                        "classification": f"Large Attack Surface — {len(all_ports)} open ports detected",
+                        "confidence": 0.9,
+                        "risk_score": 75,
+                        "threat_level": "high"
+                    })
+
+        # Overall threat level — use highest found
+        if any(t["threat_level"] == "critical" for t in threats):
+            overall_threat_level = "critical"
+        elif any(t["threat_level"] == "high" for t in threats):
+            overall_threat_level = "high"
+        elif any(t["threat_level"] == "medium" for t in threats):
+            overall_threat_level = "medium"
+        else:
+            overall_threat_level = "low"
+
+        # Calculate weighted confidence
+        if threats:
+            avg_confidence = sum(t["confidence"] for t in threats) / len(threats)
+        else:
+            avg_confidence = 0.85
 
         threat_doc = {
             "id": str(uuid.uuid4()),
-            "user_id": current_user,             # FIX 1
+            "user_id": current_user,
             "scan_id": request.scan_id,
             "threat_level": overall_threat_level,
             "classification": "Threats Detected" if threats else "No Significant Threats",
-            "confidence": 0.85,
+            "confidence": round(avg_confidence, 2),
             "details": {"total_threats": len(threats), "threats": threats},
             "timestamp": datetime.now(timezone.utc).isoformat()
         }

@@ -9,7 +9,7 @@ export default function ResetVerifyOTP() {
   const [otp, setOtp] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
-  const [step, setStep] = useState(1) // 1 = verify OTP, 2 = set new password
+  const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [resendLoading, setResendLoading] = useState(false)
   const [error, setError] = useState("")
@@ -22,16 +22,13 @@ export default function ResetVerifyOTP() {
 
   const verifyOTP = async () => {
     setError("")
-    if (!otp) {
-      setError("Please enter the OTP")
-      return
-    }
+    if (!otp) { setError("Please enter the OTP"); return }
     try {
       setLoading(true)
       await axios.post(`${API}/auth/reset-otp-verify`, null, {
         params: { email, otp }
       })
-      setStep(2) // OTP correct — show password fields
+      setStep(2)
     } catch (err) {
       setError(err.response?.data?.detail || "Invalid OTP")
     } finally {
@@ -41,29 +38,13 @@ export default function ResetVerifyOTP() {
 
   const resetPassword = async () => {
     setError("")
-
-    if (!newPassword || !confirmPassword) {
-      setError("Please fill both password fields")
-      return
-    }
-
-    if (newPassword !== confirmPassword) {
-      setError("Passwords do not match")
-      return
-    }
-
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/
-    if (!passwordRegex.test(newPassword)) {
-      setError("Password must be 8+ chars with uppercase, number & special character")
-      return
-    }
-
+    if (!newPassword || !confirmPassword) { setError("Please fill both password fields"); return }
+    if (newPassword !== confirmPassword) { setError("Passwords do not match"); return }
+    const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/
+    if (!regex.test(newPassword)) { setError("Password must be 8+ chars with uppercase, number & special character"); return }
     try {
       setLoading(true)
-      await axios.post(`${API}/auth/reset-password`, {
-        email,
-        new_password: newPassword
-      })
+      await axios.post(`${API}/auth/reset-password`, { email, new_password: newPassword })
       alert("Password updated successfully! Please login.")
       window.location.href = "/login"
     } catch (err) {
@@ -93,9 +74,16 @@ export default function ResetVerifyOTP() {
           <h1 className="text-3xl text-white mb-2 font-bold tracking-wider text-center">
             VERIFY <span className="text-red-500">OTP</span>
           </h1>
-          <p className="text-gray-400 text-sm text-center mb-6">
+          <p className="text-gray-400 text-sm text-center mb-2">
             Enter the 6-digit OTP sent to <span className="text-white">{email}</span>
           </p>
+
+          {/* Spam folder notice */}
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-sm p-2 mb-4 text-center">
+            <p className="text-yellow-400 text-xs font-mono">
+              ⚠ If you don't see the OTP email, please check your <strong>Spam / Junk folder</strong>
+            </p>
+          </div>
 
           {error && <p className="text-red-500 text-sm mb-4 text-center">{error}</p>}
 

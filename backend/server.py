@@ -301,27 +301,79 @@ async def network_scan(
 
 async def perform_network_scan(scan_id: str, target: str, scan_type: str):
     try:
-        nm = nmap.PortScanner()
-        scan_args = "-F" if scan_type == "quick" else "-sV"
-        nm.scan(hosts=target, arguments=scan_args)
+        import socket
+        import httpx
 
-        results = {"hosts": {}, "scan_stats": nm.scanstats()}
-        for host in nm.all_hosts():
-            host_info = {"hostname": nm[host].hostname(), "state": nm[host].state(), "protocols": {}}
-            for proto in nm[host].all_protocols():
-                ports = nm[host][proto].keys()
-                host_info["protocols"][proto] = {}
-                for port in sorted(ports):
-                    port_info = nm[host][proto][port]
-                    host_info["protocols"][proto][str(port)] = {
-                        "state": port_info["state"],
-                        "name": port_info.get("name", "unknown"),
-                        "product": port_info.get("product", ""),
-                        "version": port_info.get("version", "")
-                    }
-            results["hosts"][host] = host_info
+        # Resolve domain to IP if needed
+        try:
+            ip = socket.gethostbyname(target)
+        except Exception:
+            ip = target
+
+        # Use Shodan InternetDB - free, no API key, works via HTTPS
+        results = {"hosts": {}, "scan_stats": {}}
+
+        async with httpx.AsyncClient(timeout=15) as client:
+            response = await client.get(f"https://internetdb.shodan.io/{ip}")
+
+        if response.status_code == 200:
+            data = response.json()
+            ports = data.get("ports", [])
+            hostnames = data.get("hostnames", [])
+            vulns = data.get("vulns", [])
+            tags = data.get("tags", [])
+            cpes = data.get("cpes", [])
+
+            # Map common ports to service names
+            PORT_SERVICES = {
+                21: "ftp", 22: "ssh", 23: "telnet", 25: "smtp",
+                53: "dns", 80: "http", 110: "pop3", 143: "imap",
+                443: "https", 445: "smb", 993: "imaps", 995: "pop3s",
+                1433: "mssql", 3306: "mysql", 3389: "rdp",
+                5432: "postgresql", 5900: "vnc", 6379: "redis",
+                8080: "http-alt", 8443: "https-alt", 27017: "mongodb"
+            }
+
+            protocols = {"tcp": {}}
+            for port in ports:
+                protocols["tcp"][str(port)] = {
+                    "state": "open",
+                    "name": PORT_SERVICES.get(port, "unknown"),
+                    "product": "",
+                    "version": ""
+                }
+
+            host_info = {
+                "hostname": hostnames[0] if hostnames else target,
+                "state": "up",
+                "protocols": protocols,
+                "hostnames": hostnames,
+                "vulns": vulns,
+                "tags": tags,
+                "cpes": cpes
+            }
+
+            results["hosts"][ip] = host_info
+            results["scan_stats"] = {
+                "uphosts": "1",
+                "downhosts": "0",
+                "totalhosts": "1",
+                "open_ports": len(ports)
+            }
+
+        elif response.status_code == 404:
+            # Host not found in Shodan database
+            results["scan_stats"] = {
+                "uphosts": "0",
+                "downhosts": "1",
+                "totalhosts": "1",
+                "message": "No data found for this IP in Shodan database"
+            }
+        else:
+            results["scan_stats"] = {"error": f"Shodan API returned {response.status_code}"}
 
         await db.scans.update_one({"id": scan_id}, {"$set": {"status": "completed", "results": results}})
+
     except Exception as e:
         logger.error(f"Scan execution error: {str(e)}")
         await db.scans.update_one({"id": scan_id}, {"$set": {"status": "failed", "error": str(e)}})

@@ -639,7 +639,8 @@ async def leak_lookup(request: dict, current_user: str = Depends(get_current_use
             if record_count == 0:
                 continue
             total_records += record_count
-            severity = "high" if record_count > 50 else "medium" if record_count > 10 else "low"
+            # Any leak found is serious — minimum medium, high if 5+ records, critical if 20+
+            severity = "critical" if record_count >= 20 else "high" if record_count >= 5 else "medium"
             formatted_results.append({
                 "source": source_name, "records_found": record_count,
                 "severity": severity, "sample_data": valid_records[:3]

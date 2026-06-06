@@ -317,11 +317,11 @@ async def perform_network_scan(scan_id: str, target: str, scan_type: str):
             nm = nmap.PortScanner()
 
             if scan_type == "quick":
-                # Quick: top 100 ports, skip ping, detect OS if possible
-                scan_args = "-Pn -F --open -T4 -O --osscan-guess"
+                # Quick: top 100 ports, no OS (needs root), fast
+                scan_args = "-Pn -F --open -T4"
             else:
-                # Full: top 1000 ports, service version detection, OS detection
-                scan_args = "-Pn --open -T4 -sV -O --osscan-guess --version-intensity 5"
+                # Full: top 1000 ports + service version detection
+                scan_args = "-Pn --open -T4 -sV --version-intensity 5"
 
             nm.scan(hosts=target, arguments=scan_args)
 
@@ -370,6 +370,22 @@ async def perform_network_scan(scan_id: str, target: str, scan_type: str):
                     "scan_type": scan_type,
                     "engine": "nmap"
                 }
+
+                # Also enrich with Shodan CVE data even when nmap succeeds
+                try:
+                    import httpx as _httpx
+                    async with _httpx.AsyncClient(timeout=10) as _client:
+                        _resp = await _client.get(f"https://internetdb.shodan.io/{ip}")
+                    if _resp.status_code == 200:
+                        _sdata = _resp.json()
+                        for host in results["hosts"]:
+                            results["hosts"][host]["vulns"] = _sdata.get("vulns", [])
+                            results["hosts"][host]["tags"] = _sdata.get("tags", [])
+                            results["hosts"][host]["cpes"] = _sdata.get("cpes", [])
+                            if not results["hosts"][host]["hostnames"]:
+                                results["hosts"][host]["hostnames"] = _sdata.get("hostnames", [])
+                except Exception:
+                    pass  # CVE enrichment is optional
 
         except Exception as nmap_err:
             logger.warning(f"Nmap failed, falling back to Shodan InternetDB: {nmap_err}")

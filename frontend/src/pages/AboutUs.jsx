@@ -202,10 +202,7 @@ export default function AboutUs() {
               LinkedIn
             </a>
 
-            {/* Hint text */}
-            <p style={{ color: '#3f3f46', fontSize: '10px', fontFamily: 'monospace', marginTop: '8px' }}>
-              Update linkedin URL in AboutUs.jsx
-            </p>
+            
           </div>
         ))}
       </div>

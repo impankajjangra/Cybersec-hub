@@ -314,16 +314,24 @@ async def perform_network_scan(scan_id: str, target: str, scan_type: str):
         # ── Try real Nmap first (works on GCP/VPS) ──────────────────────
         nmap_success = False
         try:
+            import subprocess, shutil
+
+            # Check nmap is available
+            if not shutil.which("nmap"):
+                raise Exception("nmap not found on PATH")
+
             nm = nmap.PortScanner()
 
             if scan_type == "quick":
-                # Quick: top 100 ports, no OS (needs root), fast
-                scan_args = "-Pn -F --open -T4"
+                # Quick: top 100 ports, service name detection, fast
+                scan_args = "-Pn -F --open -T4 -sV --version-intensity 2"
             else:
-                # Full: top 1000 ports + service version detection
-                scan_args = "-Pn --open -T4 -sV --version-intensity 5"
+                # Full: top 1000 ports, full service version, script scanning
+                scan_args = "-Pn --open -T4 -sV -sC --version-intensity 7"
 
+            logger.info(f"Nmap scanning {target} with args: {scan_args}")
             nm.scan(hosts=target, arguments=scan_args)
+            logger.info(f"Nmap found hosts: {nm.all_hosts()}")
 
             if nm.all_hosts():
                 nmap_success = True
@@ -766,15 +774,36 @@ async def get_dashboard_stats(current_user: str = Depends(get_current_user)):
     total_threats = await db.threats.count_documents(user_filter)
     active_scans = await db.scans.count_documents({"user_id": current_user, "status": "running"})
 
-    recent_scans = await db.scans.find(user_filter, {"_id": 0}).sort("timestamp", -1).limit(5).to_list(5)
-    recent_threats = await db.threats.find(user_filter, {"_id": 0}).sort("timestamp", -1).limit(5).to_list(5)
+    # Fetch more data for charts — 50 most recent
+    recent_scans = await db.scans.find(user_filter, {"_id": 0}).sort("timestamp", -1).limit(50).to_list(50)
+    recent_threats = await db.threats.find(user_filter, {"_id": 0}).sort("timestamp", -1).limit(50).to_list(50)
+
+    # Build threat level distribution across ALL threats
+    threat_level_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+    for t in recent_threats:
+        lvl = t.get("threat_level", "low")
+        if lvl in threat_level_counts:
+            threat_level_counts[lvl] += 1
+        else:
+            threat_level_counts["low"] += 1
+
+    # Build scan status distribution
+    scan_status_counts = {"completed": 0, "failed": 0, "running": 0}
+    for s in recent_scans:
+        st = s.get("status", "failed")
+        if st in scan_status_counts:
+            scan_status_counts[st] += 1
 
     return {
         "total_scans": total_scans,
         "total_threats": total_threats,
         "active_scans": active_scans,
-        "recent_scans": recent_scans,
-        "recent_threats": recent_threats
+        "recent_scans": recent_scans[:5],        # last 5 for recent list
+        "recent_threats": recent_threats[:5],    # last 5 for recent list
+        "all_scans": recent_scans,               # all for charts
+        "all_threats": recent_threats,           # all for charts
+        "threat_level_counts": threat_level_counts,
+        "scan_status_counts": scan_status_counts
     }
 
 

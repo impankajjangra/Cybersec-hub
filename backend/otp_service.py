@@ -83,7 +83,7 @@ async def send_email_otp(to_email: str, otp: str, purpose: str = "verification")
           <tr>
             <td style="background:#080808;padding:16px 40px;border-top:1px solid #1a1a1a;">
               <p style="color:#444444;font-size:11px;margin:0;text-align:center;">
-                &copy; 2025 CyberSec Hub. All rights reserved.
+                2026 CyberSec Hub. All rights reserved.
               </p>
             </td>
           </tr>

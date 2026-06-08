@@ -22,6 +22,34 @@ const RISK_COLORS = {
   low:      'bg-[#10B981]/10 text-[#10B981] border-[#10B981]/30',
 };
 
+const SCAN_TOOLS = {
+  nmap: {
+    label: 'Nmap',
+    purpose: 'Discovers live hosts, open ports, services and service versions.',
+    usage: 'Use for first-stage network reconnaissance. Private IPs are scanned from the GCP VM network only.',
+  },
+  nuclei: {
+    label: 'Nuclei',
+    purpose: 'Runs template-based vulnerability checks against web apps, APIs and exposed services.',
+    usage: 'Use after port discovery to check known misconfigurations, CVEs and exposed panels.',
+  },
+  nikto: {
+    label: 'Nikto',
+    purpose: 'Checks web servers for dangerous files, outdated software and common server issues.',
+    usage: 'Use on HTTP/HTTPS targets after finding a web port such as 80, 443, 8080 or 8443.',
+  },
+  whatweb: {
+    label: 'WhatWeb',
+    purpose: 'Fingerprints web technologies such as server software, frameworks, CMS and headers.',
+    usage: 'Use to identify the web stack before deeper vulnerability testing.',
+  },
+  zap: {
+    label: 'OWASP ZAP',
+    purpose: 'Runs OWASP ZAP baseline web security checks for passive web application findings.',
+    usage: 'Use on authorized web applications to identify common web security weaknesses.',
+  },
+};
+
 const PortRow = ({ port, portInfo }) => {
   const risk = PORT_RISK[parseInt(port)] || 'low';
   const riskColor = RISK_COLORS[risk];
@@ -182,6 +210,7 @@ const HostCard = ({ host, hostData }) => {
 const NetworkScanner = () => {
   const [target, setTarget] = useState('');
   const [scanType, setScanType] = useState('quick');
+  const [selectedTool, setSelectedTool] = useState('nmap');
   const [scanning, setScanning] = useState(false);
   const [results, setResults] = useState(null);
   const [scanEngine, setScanEngine] = useState('');
@@ -190,7 +219,7 @@ const NetworkScanner = () => {
     if (!target) { toast.error('Please enter a target IP or domain'); return; }
     setScanning(true); setResults(null); setScanEngine('');
     try {
-      const response = await api.post('/api/scan/network', { target, scan_type: scanType });
+      const response = await api.post('/api/scan/network', { target, scan_type: scanType, tool: selectedTool });
       toast.success('Scan started');
       pollScanStatus(response.data.scan_id);
     } catch (error) {
@@ -221,7 +250,10 @@ const NetworkScanner = () => {
   };
 
   const hasResults = results?.results?.hosts && Object.keys(results.results.hosts).length > 0;
+  const toolOutput = results?.results?.tool_output;
   const noData = results && !hasResults;
+  const selectedToolInfo = SCAN_TOOLS[selectedTool];
+  const engineLabel = SCAN_TOOLS[scanEngine]?.label || (scanEngine === 'shodan-internetdb' ? 'Shodan InternetDB' : scanEngine);
 
   return (
     <div className="max-w-[1600px] mx-auto p-4 md:p-6">
@@ -233,11 +265,18 @@ const NetworkScanner = () => {
       </div>
 
       {/* Notice */}
-      <div className="mb-4 flex items-start gap-2 bg-[#F59E0B]/10 border border-[#F59E0B]/30 rounded-sm p-3">
+      <div className="hidden">
         <Info size={16} className="text-[#F59E0B] mt-0.5 shrink-0" />
         <p className="text-[#F59E0B] font-mono text-xs">
           ⚠ Works with <strong>public IP addresses</strong> and domains only. Private IPs (192.168.x.x, 10.x.x.x) are not supported.
           Try: <span className="text-white">scanme.nmap.org</span> or <span className="text-white">8.8.8.8</span>
+        </p>
+      </div>
+
+      <div className="mb-4 flex items-start gap-2 bg-[#F59E0B]/10 border border-[#F59E0B]/30 rounded-sm p-3">
+        <Info size={16} className="text-[#F59E0B] mt-0.5 shrink-0" />
+        <p className="text-[#F59E0B] font-mono text-xs">
+          Private IPs are scanned from the deployed GCP VM only, so they must be reachable from that VM network. Public enrichment tools are skipped for private ranges.
         </p>
       </div>
 
@@ -262,6 +301,20 @@ const NetworkScanner = () => {
                 />
               </div>
               <div>
+                <label className="font-mono text-xs uppercase tracking-widest text-zinc-500 mb-2 block">Tool</label>
+                <Select value={selectedTool} onValueChange={setSelectedTool}>
+                  <SelectTrigger className="bg-zinc-950/50 border-white/10 text-white font-mono">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-zinc-950 border-white/10">
+                    {Object.entries(SCAN_TOOLS).map(([value, tool]) => (
+                      <SelectItem key={value} value={value} className="text-white font-mono">{tool.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {selectedTool === 'nmap' && (
+              <div>
                 <label className="font-mono text-xs uppercase tracking-widest text-zinc-500 mb-2 block">Scan Type</label>
                 <Select value={scanType} onValueChange={setScanType}>
                   <SelectTrigger className="bg-zinc-950/50 border-white/10 text-white font-mono">
@@ -273,6 +326,7 @@ const NetworkScanner = () => {
                   </SelectContent>
                 </Select>
               </div>
+              )}
 
               <Button
                 onClick={startScan} disabled={scanning}
@@ -287,7 +341,9 @@ const NetworkScanner = () => {
             <div className="mt-4 p-3 bg-zinc-900/20 border-l-2 border-zinc-700 rounded-r-sm">
               <h3 className="font-mono text-xs uppercase text-zinc-500 mb-2">Scan Details</h3>
               <div className="space-y-1 text-xs font-mono text-zinc-400">
-                {scanType === 'quick' ? (
+                <p><span className="text-zinc-300">Purpose:</span> {selectedToolInfo.purpose}</p>
+                <p><span className="text-zinc-300">Usage:</span> {selectedToolInfo.usage}</p>
+                {selectedTool === 'nmap' && scanType === 'quick' ? (
                   <>
                     <p>• Top 100 common ports</p>
                     <p>• Fast scan (-T4)</p>
@@ -295,13 +351,19 @@ const NetworkScanner = () => {
                     <p>• OS guess</p>
                     <p>• ~10-30 seconds</p>
                   </>
-                ) : (
+                ) : selectedTool === 'nmap' ? (
                   <>
                     <p>• Top 1000 ports</p>
                     <p>• Service version detection</p>
                     <p>• OS detection</p>
                     <p>• CPE identification</p>
                     <p>• ~60-120 seconds</p>
+                  </>
+                ) : (
+                  <>
+                    <p>Full command output</p>
+                    <p>Requires the tool installed on the GCP VM</p>
+                    <p>Use only on systems you are authorized to test</p>
                   </>
                 )}
               </div>
@@ -317,6 +379,11 @@ const NetworkScanner = () => {
                 Scan Results
               </h2>
               {scanEngine && (
+                <span className="font-mono text-[10px] text-zinc-500 uppercase">
+                  Engine: {engineLabel}
+                </span>
+              )}
+              {false && scanEngine && (
                 <span className="font-mono text-[10px] text-zinc-500 uppercase">
                   Engine: {scanEngine === 'nmap' ? '⚡ Nmap' : '🌐 Shodan InternetDB'}
                 </span>
@@ -335,7 +402,9 @@ const NetworkScanner = () => {
                 <Loader2 className="mx-auto mb-4 text-[#FF3B30] animate-spin" size={48} />
                 <p className="text-zinc-400 font-mono text-sm mb-2">Scanning in progress...</p>
                 <p className="text-zinc-600 font-mono text-xs">
-                  {scanType === 'full' ? 'Full scan may take 60-120 seconds' : 'Quick scan takes ~10-30 seconds'}
+                  {selectedTool === 'nmap'
+                    ? (scanType === 'full' ? 'Full scan may take 60-120 seconds' : 'Quick scan takes ~10-30 seconds')
+                    : `${selectedToolInfo.label} may take a few minutes`}
                 </p>
               </div>
             )}
@@ -343,7 +412,9 @@ const NetworkScanner = () => {
             {noData && !scanning && (
               <div className="text-center py-12">
                 <Radar className="mx-auto mb-4 text-zinc-600" size={48} strokeWidth={1.5} />
-                <p className="text-zinc-400 font-mono text-sm mb-2">No open ports found for this target.</p>
+                <p className="text-zinc-400 font-mono text-sm mb-2">
+                  {results.results.scan_stats?.message || 'No open ports found for this target.'}
+                </p>
                 <p className="text-zinc-600 font-mono text-xs">
                   Try <span className="text-zinc-400">scanme.nmap.org</span> to test the scanner.
                 </p>
@@ -373,6 +444,20 @@ const NetworkScanner = () => {
                 {Object.entries(results.results.hosts).map(([host, hostData]) => (
                   <HostCard key={host} host={host} hostData={hostData} />
                 ))}
+              </div>
+            )}
+
+            {toolOutput?.raw_output && !scanning && (
+              <div className="mt-4 border border-white/10 rounded-sm overflow-hidden">
+                <div className="p-3 bg-zinc-900/30 border-b border-white/10">
+                  <h3 className="font-mono text-xs uppercase tracking-wider text-zinc-400">Full Output</h3>
+                  {toolOutput.command && (
+                    <p className="mt-1 font-mono text-[11px] text-zinc-600 break-all">{toolOutput.command}</p>
+                  )}
+                </div>
+                <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words bg-black/40 p-3 font-mono text-xs text-zinc-300">
+                  {toolOutput.raw_output}
+                </pre>
               </div>
             )}
           </div>

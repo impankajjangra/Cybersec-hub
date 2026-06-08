@@ -68,6 +68,7 @@ class OAuthUser(BaseModel):
 class NetworkScanRequest(BaseModel):
     target: str
     scan_type: str = "quick"
+    tool: str = "nmap"
 
 class NetworkScanResult(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -285,12 +286,13 @@ async def network_scan(
             "user_id": current_user,              # FIX 1: tag with user
             "target": request.target,
             "scan_type": request.scan_type,
+            "tool": request.tool,
             "status": "running",
             "results": {},
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
         await db.scans.insert_one(scan_doc)
-        background_tasks.add_task(perform_network_scan, scan_id, request.target, request.scan_type)
+        background_tasks.add_task(perform_network_scan, scan_id, request.target, request.scan_type, request.tool)
         return {"scan_id": scan_id, "status": "started", "message": "Scan initiated"}
     except HTTPException:
         raise
@@ -299,9 +301,53 @@ async def network_scan(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-async def perform_network_scan(scan_id: str, target: str, scan_type: str):
+def is_private_target(value: str) -> bool:
+    import ipaddress
+    import socket
+
+    try:
+        return ipaddress.ip_address(value).is_private
+    except ValueError:
+        pass
+
+    try:
+        ip = socket.gethostbyname(value)
+        return ipaddress.ip_address(ip).is_private
+    except Exception:
+        return False
+
+
+def normalize_web_target(target: str) -> str:
+    if target.startswith(("http://", "https://")):
+        return target
+    return f"http://{target}"
+
+
+def run_tool_command(command: List[str], timeout: int = 180) -> Dict[str, Any]:
+    import subprocess
+
+    completed = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        check=False
+    )
+    stdout = completed.stdout or ""
+    stderr = completed.stderr or ""
+    return {
+        "command": " ".join(command),
+        "returncode": completed.returncode,
+        "stdout": stdout,
+        "stderr": stderr,
+        "raw_output": stdout + (("\n" + stderr) if stderr else "")
+    }
+
+
+async def perform_network_scan(scan_id: str, target: str, scan_type: str, tool: str = "nmap"):
     try:
         import socket
+        import shutil
 
         # Resolve domain to IP
         try:
@@ -309,7 +355,95 @@ async def perform_network_scan(scan_id: str, target: str, scan_type: str):
         except Exception:
             ip = target
 
-        results = {"hosts": {}, "scan_stats": {}}
+        tool = (tool or "nmap").lower()
+        results = {"hosts": {}, "scan_stats": {}, "tool_output": {}}
+
+        external_tools = {
+            "nuclei": {
+                "purpose": "Runs template-based vulnerability checks against web apps, APIs and exposed services.",
+                "usage": "Use it after port discovery to check known misconfigurations, CVEs and exposed panels.",
+                "binary": "nuclei",
+                "command": ["nuclei", "-u", normalize_web_target(target), "-no-color"],
+                "timeout": 240,
+            },
+            "nikto": {
+                "purpose": "Checks web servers for dangerous files, outdated software and common server issues.",
+                "usage": "Use it on HTTP/HTTPS targets after finding a web port such as 80, 443, 8080 or 8443.",
+                "binary": "nikto",
+                "command": ["nikto", "-host", normalize_web_target(target), "-nointeractive"],
+                "timeout": 240,
+            },
+            "whatweb": {
+                "purpose": "Fingerprints web technologies such as server software, frameworks, CMS and headers.",
+                "usage": "Use it to identify the web stack before deeper vulnerability testing.",
+                "binary": "whatweb",
+                "command": ["whatweb", "-a", "3", "--color=never", normalize_web_target(target)],
+                "timeout": 120,
+            },
+            "zap": {
+                "purpose": "Runs OWASP ZAP baseline web security checks for passive web application findings.",
+                "usage": "Use it on authorized web applications to identify common web security weaknesses.",
+                "binary": "zap-baseline.py",
+                "command": ["zap-baseline.py", "-t", normalize_web_target(target), "-I"],
+                "timeout": 300,
+            },
+        }
+
+        if tool in external_tools:
+            config = external_tools[tool]
+            if not shutil.which(config["binary"]):
+                results["scan_stats"] = {
+                    "uphosts": "0",
+                    "downhosts": "0",
+                    "totalhosts": "1",
+                    "engine": tool,
+                    "message": f"{config['binary']} is not installed on this VM."
+                }
+                results["tool_output"] = {
+                    "tool": tool,
+                    "purpose": config["purpose"],
+                    "usage": config["usage"],
+                    "command": " ".join(config["command"]),
+                    "raw_output": (
+                        f"{config['binary']} is not installed on this server.\n"
+                        f"Install it on the GCP VM, then run this scan again.\n"
+                        f"Purpose: {config['purpose']}\n"
+                        f"Usage: {config['usage']}"
+                    )
+                }
+            else:
+                try:
+                    command_result = run_tool_command(config["command"], config["timeout"])
+                    results["tool_output"] = {
+                        "tool": tool,
+                        "purpose": config["purpose"],
+                        "usage": config["usage"],
+                        **command_result
+                    }
+                    results["scan_stats"] = {
+                        "uphosts": "1",
+                        "downhosts": "0",
+                        "totalhosts": "1",
+                        "engine": tool,
+                        "returncode": command_result["returncode"]
+                    }
+                except Exception as tool_err:
+                    results["scan_stats"] = {
+                        "uphosts": "0",
+                        "downhosts": "0",
+                        "totalhosts": "1",
+                        "engine": tool,
+                        "error": str(tool_err)
+                    }
+                    results["tool_output"] = {
+                        "tool": tool,
+                        "purpose": config["purpose"],
+                        "usage": config["usage"],
+                        "raw_output": str(tool_err)
+                    }
+
+            await db.scans.update_one({"id": scan_id}, {"$set": {"status": "completed", "results": results}})
+            return
 
         # ── Try real Nmap first (works on GCP/VPS) ──────────────────────
         nmap_success = False
@@ -332,6 +466,13 @@ async def perform_network_scan(scan_id: str, target: str, scan_type: str):
             logger.info(f"Nmap scanning {target} with args: {scan_args}")
             nm.scan(hosts=target, arguments=scan_args)
             logger.info(f"Nmap found hosts: {nm.all_hosts()}")
+            raw_nmap_output = ""
+            try:
+                raw_nmap_output = nm.get_nmap_last_output()
+                if isinstance(raw_nmap_output, bytes):
+                    raw_nmap_output = raw_nmap_output.decode(errors="replace")
+            except Exception:
+                raw_nmap_output = ""
 
             if nm.all_hosts():
                 nmap_success = True
@@ -378,9 +519,18 @@ async def perform_network_scan(scan_id: str, target: str, scan_type: str):
                     "scan_type": scan_type,
                     "engine": "nmap"
                 }
+                results["tool_output"] = {
+                    "tool": "nmap",
+                    "purpose": "Discovers live hosts, open ports, services and service versions.",
+                    "usage": "Use it for first-stage network reconnaissance on targets reachable from the GCP VM.",
+                    "command": f"nmap {scan_args} {target}",
+                    "raw_output": raw_nmap_output
+                }
 
                 # Also enrich with Shodan CVE data even when nmap succeeds
                 try:
+                    if is_private_target(target):
+                        raise Exception("private target; skip public intelligence enrichment")
                     import httpx as _httpx
                     async with _httpx.AsyncClient(timeout=10) as _client:
                         _resp = await _client.get(f"https://internetdb.shodan.io/{ip}")
@@ -397,9 +547,24 @@ async def perform_network_scan(scan_id: str, target: str, scan_type: str):
 
         except Exception as nmap_err:
             logger.warning(f"Nmap failed, falling back to Shodan InternetDB: {nmap_err}")
+            results["tool_output"] = {
+                "tool": "nmap",
+                "purpose": "Discovers live hosts, open ports, services and service versions.",
+                "usage": "Use it for first-stage network reconnaissance on targets reachable from the GCP VM.",
+                "raw_output": str(nmap_err)
+            }
 
         # ── Fallback: Shodan InternetDB (works on Railway/Render) ───────
         if not nmap_success:
+            if is_private_target(target):
+                results["scan_stats"] = {
+                    "uphosts": "0", "downhosts": "0",
+                    "totalhosts": "1",
+                    "message": "Private IPs are scanned only with local Nmap from the GCP VM. Shodan InternetDB is skipped for private ranges.",
+                    "engine": "nmap"
+                }
+                await db.scans.update_one({"id": scan_id}, {"$set": {"status": "completed", "results": results}})
+                return
             try:
                 import httpx
                 PORT_SERVICES = {

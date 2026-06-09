@@ -68,7 +68,10 @@ class OAuthUser(BaseModel):
 class NetworkScanRequest(BaseModel):
     target: str
     scan_type: str = "quick"
-    tool: str = "nmap"
+
+class ToolScanRequest(BaseModel):
+    target: str
+    tool: str  # nmap | nuclei | nikto | whatweb | zap
 
 class NetworkScanResult(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -286,13 +289,12 @@ async def network_scan(
             "user_id": current_user,              # FIX 1: tag with user
             "target": request.target,
             "scan_type": request.scan_type,
-            "tool": request.tool,
             "status": "running",
             "results": {},
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
         await db.scans.insert_one(scan_doc)
-        background_tasks.add_task(perform_network_scan, scan_id, request.target, request.scan_type, request.tool)
+        background_tasks.add_task(perform_network_scan, scan_id, request.target, request.scan_type)
         return {"scan_id": scan_id, "status": "started", "message": "Scan initiated"}
     except HTTPException:
         raise
@@ -301,53 +303,9 @@ async def network_scan(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-def is_private_target(value: str) -> bool:
-    import ipaddress
-    import socket
-
+async def perform_network_scan(scan_id: str, target: str, scan_type: str):
     try:
-        return ipaddress.ip_address(value).is_private
-    except ValueError:
-        pass
-
-    try:
-        ip = socket.gethostbyname(value)
-        return ipaddress.ip_address(ip).is_private
-    except Exception:
-        return False
-
-
-def normalize_web_target(target: str) -> str:
-    if target.startswith(("http://", "https://")):
-        return target
-    return f"http://{target}"
-
-
-def run_tool_command(command: List[str], timeout: int = 180) -> Dict[str, Any]:
-    import subprocess
-
-    completed = subprocess.run(
-        command,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-        check=False
-    )
-    stdout = completed.stdout or ""
-    stderr = completed.stderr or ""
-    return {
-        "command": " ".join(command),
-        "returncode": completed.returncode,
-        "stdout": stdout,
-        "stderr": stderr,
-        "raw_output": stdout + (("\n" + stderr) if stderr else "")
-    }
-
-
-async def perform_network_scan(scan_id: str, target: str, scan_type: str, tool: str = "nmap"):
-    try:
-        import socket
-        import shutil
+        import socket, ipaddress, shutil, httpx
 
         # Resolve domain to IP
         try:
@@ -355,127 +313,43 @@ async def perform_network_scan(scan_id: str, target: str, scan_type: str, tool: 
         except Exception:
             ip = target
 
-        tool = (tool or "nmap").lower()
-        results = {"hosts": {}, "scan_stats": {}, "tool_output": {}}
+        results = {"hosts": {}, "scan_stats": {}}
 
-        external_tools = {
-            "nuclei": {
-                "purpose": "Runs template-based vulnerability checks against web apps, APIs and exposed services.",
-                "usage": "Use it after port discovery to check known misconfigurations, CVEs and exposed panels.",
-                "binary": "nuclei",
-                "command": ["nuclei", "-u", normalize_web_target(target), "-no-color"],
-                "timeout": 240,
-            },
-            "nikto": {
-                "purpose": "Checks web servers for dangerous files, outdated software and common server issues.",
-                "usage": "Use it on HTTP/HTTPS targets after finding a web port such as 80, 443, 8080 or 8443.",
-                "binary": "nikto",
-                "command": ["nikto", "-host", normalize_web_target(target), "-nointeractive"],
-                "timeout": 240,
-            },
-            "whatweb": {
-                "purpose": "Fingerprints web technologies such as server software, frameworks, CMS and headers.",
-                "usage": "Use it to identify the web stack before deeper vulnerability testing.",
-                "binary": "whatweb",
-                "command": ["whatweb", "-a", "3", "--color=never", normalize_web_target(target)],
-                "timeout": 120,
-            },
-            "zap": {
-                "purpose": "Runs OWASP ZAP baseline web security checks for passive web application findings.",
-                "usage": "Use it on authorized web applications to identify common web security weaknesses.",
-                "binary": "zap-baseline.py",
-                "command": ["zap-baseline.py", "-t", normalize_web_target(target), "-I"],
-                "timeout": 300,
-            },
-        }
+        # ── Check if private IP — GCP cannot reach private IPs ──────────
+        try:
+            ip_obj = ipaddress.ip_address(ip)
+            is_private = ip_obj.is_private or ip_obj.is_loopback or ip_obj.is_link_local
+        except ValueError:
+            is_private = False
 
-        if tool in external_tools:
-            config = external_tools[tool]
-            if not shutil.which(config["binary"]):
-                results["scan_stats"] = {
-                    "uphosts": "0",
-                    "downhosts": "0",
-                    "totalhosts": "1",
-                    "engine": tool,
-                    "message": f"{config['binary']} is not installed on this VM."
-                }
-                results["tool_output"] = {
-                    "tool": tool,
-                    "purpose": config["purpose"],
-                    "usage": config["usage"],
-                    "command": " ".join(config["command"]),
-                    "raw_output": (
-                        f"{config['binary']} is not installed on this server.\n"
-                        f"Install it on the GCP VM, then run this scan again.\n"
-                        f"Purpose: {config['purpose']}\n"
-                        f"Usage: {config['usage']}"
-                    )
-                }
-            else:
-                try:
-                    command_result = run_tool_command(config["command"], config["timeout"])
-                    results["tool_output"] = {
-                        "tool": tool,
-                        "purpose": config["purpose"],
-                        "usage": config["usage"],
-                        **command_result
-                    }
-                    results["scan_stats"] = {
-                        "uphosts": "1",
-                        "downhosts": "0",
-                        "totalhosts": "1",
-                        "engine": tool,
-                        "returncode": command_result["returncode"]
-                    }
-                except Exception as tool_err:
-                    results["scan_stats"] = {
-                        "uphosts": "0",
-                        "downhosts": "0",
-                        "totalhosts": "1",
-                        "engine": tool,
-                        "error": str(tool_err)
-                    }
-                    results["tool_output"] = {
-                        "tool": tool,
-                        "purpose": config["purpose"],
-                        "usage": config["usage"],
-                        "raw_output": str(tool_err)
-                    }
-
+        if is_private:
+            results["scan_stats"] = {
+                "engine": "blocked",
+                "uphosts": "0", "downhosts": "1", "totalhosts": "1",
+                "message": f"Private IP ({ip}) cannot be reached from cloud server. Use a public IP or domain."
+            }
             await db.scans.update_one({"id": scan_id}, {"$set": {"status": "completed", "results": results}})
             return
 
-        # ── Try real Nmap first (works on GCP/VPS) ──────────────────────
-        nmap_success = False
+        # ── Try Nmap (works on GCP VPS) ──────────────────────────────────
+        nmap_ran = False
         try:
-            import subprocess, shutil
-
-            # Check nmap is available
             if not shutil.which("nmap"):
-                raise Exception("nmap not found on PATH")
+                raise Exception("nmap binary not found")
 
             nm = nmap.PortScanner()
 
             if scan_type == "quick":
-                # Quick: top 100 ports, service name detection, fast
-                scan_args = "-Pn -F --open -T4 -sV --version-intensity 2"
+                scan_args = "-Pn -F -T4 -sV --version-intensity 3"
             else:
-                # Full: top 1000 ports, full service version, script scanning
-                scan_args = "-Pn --open -T4 -sV -sC --version-intensity 7"
+                scan_args = "-Pn -T4 -sV -sC --version-intensity 7 -O --osscan-guess"
 
-            logger.info(f"Nmap scanning {target} with args: {scan_args}")
+            logger.info(f"[NMAP] Starting scan: {target} | args: {scan_args}")
             nm.scan(hosts=target, arguments=scan_args)
-            logger.info(f"Nmap found hosts: {nm.all_hosts()}")
-            raw_nmap_output = ""
-            try:
-                raw_nmap_output = nm.get_nmap_last_output()
-                if isinstance(raw_nmap_output, bytes):
-                    raw_nmap_output = raw_nmap_output.decode(errors="replace")
-            except Exception:
-                raw_nmap_output = ""
+            logger.info(f"[NMAP] Completed. Hosts: {nm.all_hosts()}")
+            nmap_ran = True
 
             if nm.all_hosts():
-                nmap_success = True
                 for host in nm.all_hosts():
                     host_info = {
                         "hostname": nm[host].hostname() or target,
@@ -483,141 +357,124 @@ async def perform_network_scan(scan_id: str, target: str, scan_type: str, tool: 
                         "protocols": {},
                         "os": [],
                         "hostnames": [nm[host].hostname()] if nm[host].hostname() else [],
-                        "vulns": [],
-                        "tags": [],
-                        "cpes": []
+                        "vulns": [], "tags": [], "cpes": [],
+                        "uptime": "",
+                        "network_distance": "",
                     }
 
-                    # OS Detection
-                    if "osmatch" in nm[host]:
-                        for osmatch in nm[host]["osmatch"][:3]:
+                    # OS Detection results
+                    if "osmatch" in nm[host] and nm[host]["osmatch"]:
+                        for osmatch in nm[host]["osmatch"][:5]:
                             host_info["os"].append({
-                                "name": osmatch.get("name", ""),
+                                "name": osmatch.get("name", "Unknown"),
                                 "accuracy": osmatch.get("accuracy", ""),
+                                "type": osmatch.get("osclass", [{}])[0].get("type", "") if osmatch.get("osclass") else "",
+                                "vendor": osmatch.get("osclass", [{}])[0].get("vendor", "") if osmatch.get("osclass") else "",
+                                "osfamily": osmatch.get("osclass", [{}])[0].get("osfamily", "") if osmatch.get("osclass") else "",
                                 "cpe": osmatch.get("osclass", [{}])[0].get("cpe", [""])[0] if osmatch.get("osclass") else ""
                             })
 
-                    # Ports
+                    # Port scanning results — all ports including filtered
                     for proto in nm[host].all_protocols():
-                        ports = nm[host][proto].keys()
                         host_info["protocols"][proto] = {}
-                        for port in sorted(ports):
-                            port_info = nm[host][proto][port]
+                        for port in sorted(nm[host][proto].keys()):
+                            pi = nm[host][proto][port]
+                            script_output = {}
+                            if "script" in pi:
+                                script_output = pi["script"]
                             host_info["protocols"][proto][str(port)] = {
-                                "state": port_info["state"],
-                                "name": port_info.get("name", "unknown"),
-                                "product": port_info.get("product", ""),
-                                "version": port_info.get("version", ""),
-                                "extrainfo": port_info.get("extrainfo", ""),
-                                "cpe": port_info.get("cpe", "")
+                                "state": pi["state"],
+                                "name": pi.get("name", "unknown"),
+                                "product": pi.get("product", ""),
+                                "version": pi.get("version", ""),
+                                "extrainfo": pi.get("extrainfo", ""),
+                                "cpe": pi.get("cpe", ""),
+                                "scripts": script_output,
                             }
 
                     results["hosts"][host] = host_info
 
+                total_open = sum(
+                    1 for h in results["hosts"].values()
+                    for proto in h["protocols"].values()
+                    for p in proto.values()
+                    if p["state"] == "open"
+                )
+
                 results["scan_stats"] = {
                     **nm.scanstats(),
+                    "engine": "nmap",
                     "scan_type": scan_type,
-                    "engine": "nmap"
-                }
-                results["tool_output"] = {
-                    "tool": "nmap",
-                    "purpose": "Discovers live hosts, open ports, services and service versions.",
-                    "usage": "Use it for first-stage network reconnaissance on targets reachable from the GCP VM.",
-                    "command": f"nmap {scan_args} {target}",
-                    "raw_output": raw_nmap_output
+                    "open_ports": total_open,
+                    "nmap_version": "7.95",
                 }
 
-                # Also enrich with Shodan CVE data even when nmap succeeds
+                # Enrich with Shodan CVE data
                 try:
-                    if is_private_target(target):
-                        raise Exception("private target; skip public intelligence enrichment")
-                    import httpx as _httpx
-                    async with _httpx.AsyncClient(timeout=10) as _client:
-                        _resp = await _client.get(f"https://internetdb.shodan.io/{ip}")
-                    if _resp.status_code == 200:
-                        _sdata = _resp.json()
-                        for host in results["hosts"]:
-                            results["hosts"][host]["vulns"] = _sdata.get("vulns", [])
-                            results["hosts"][host]["tags"] = _sdata.get("tags", [])
-                            results["hosts"][host]["cpes"] = _sdata.get("cpes", [])
-                            if not results["hosts"][host]["hostnames"]:
-                                results["hosts"][host]["hostnames"] = _sdata.get("hostnames", [])
+                    async with httpx.AsyncClient(timeout=8) as c:
+                        r = await c.get(f"https://internetdb.shodan.io/{ip}")
+                    if r.status_code == 200:
+                        sd = r.json()
+                        for h in results["hosts"]:
+                            results["hosts"][h]["vulns"] = sd.get("vulns", [])
+                            results["hosts"][h]["tags"] = sd.get("tags", [])
+                            results["hosts"][h]["cpes"] = sd.get("cpes", [])
                 except Exception:
-                    pass  # CVE enrichment is optional
+                    pass
+
+            else:
+                results["scan_stats"] = {
+                    "engine": "nmap", "scan_type": scan_type,
+                    "uphosts": "0", "downhosts": "0", "totalhosts": "1",
+                    "message": "Host is up but all ports are filtered/closed"
+                }
 
         except Exception as nmap_err:
-            logger.warning(f"Nmap failed, falling back to Shodan InternetDB: {nmap_err}")
-            results["tool_output"] = {
-                "tool": "nmap",
-                "purpose": "Discovers live hosts, open ports, services and service versions.",
-                "usage": "Use it for first-stage network reconnaissance on targets reachable from the GCP VM.",
-                "raw_output": str(nmap_err)
+            logger.warning(f"[NMAP] Failed: {nmap_err} — using Shodan fallback")
+            nmap_ran = False
+
+        # ── Shodan InternetDB fallback (for non-GCP environments) ────────
+        if not nmap_ran:
+            PORT_NAMES = {
+                21:"ftp",22:"ssh",23:"telnet",25:"smtp",53:"dns",80:"http",
+                110:"pop3",143:"imap",443:"https",445:"smb",993:"imaps",
+                995:"pop3s",1433:"mssql",3306:"mysql",3389:"rdp",
+                5432:"postgresql",5900:"vnc",6379:"redis",
+                8080:"http-alt",8443:"https-alt",27017:"mongodb"
             }
-
-        # ── Fallback: Shodan InternetDB (works on Railway/Render) ───────
-        if not nmap_success:
-            if is_private_target(target):
-                results["scan_stats"] = {
-                    "uphosts": "0", "downhosts": "0",
-                    "totalhosts": "1",
-                    "message": "Private IPs are scanned only with local Nmap from the GCP VM. Shodan InternetDB is skipped for private ranges.",
-                    "engine": "nmap"
-                }
-                await db.scans.update_one({"id": scan_id}, {"$set": {"status": "completed", "results": results}})
-                return
             try:
-                import httpx
-                PORT_SERVICES = {
-                    21: "ftp", 22: "ssh", 23: "telnet", 25: "smtp",
-                    53: "dns", 80: "http", 110: "pop3", 143: "imap",
-                    443: "https", 445: "smb", 993: "imaps", 995: "pop3s",
-                    1433: "mssql", 3306: "mysql", 3389: "rdp",
-                    5432: "postgresql", 5900: "vnc", 6379: "redis",
-                    8080: "http-alt", 8443: "https-alt", 27017: "mongodb"
-                }
-
                 async with httpx.AsyncClient(timeout=15) as client:
                     response = await client.get(f"https://internetdb.shodan.io/{ip}")
-
                 if response.status_code == 200:
                     data = response.json()
                     ports = data.get("ports", [])
                     hostnames = data.get("hostnames", [])
-
                     protocols = {"tcp": {}}
                     for port in ports:
                         protocols["tcp"][str(port)] = {
-                            "state": "open",
-                            "name": PORT_SERVICES.get(port, "unknown"),
-                            "product": "", "version": "",
-                            "extrainfo": "", "cpe": ""
+                            "state": "open", "name": PORT_NAMES.get(port, "unknown"),
+                            "product": "", "version": "", "extrainfo": "", "cpe": "", "scripts": {}
                         }
-
                     results["hosts"][ip] = {
                         "hostname": hostnames[0] if hostnames else target,
-                        "state": "up",
-                        "protocols": protocols,
-                        "os": [],
-                        "hostnames": hostnames,
+                        "state": "up", "protocols": protocols,
+                        "os": [], "hostnames": hostnames,
                         "vulns": data.get("vulns", []),
                         "tags": data.get("tags", []),
-                        "cpes": data.get("cpes", [])
+                        "cpes": data.get("cpes", []),
                     }
                     results["scan_stats"] = {
-                        "uphosts": "1", "downhosts": "0",
-                        "totalhosts": "1", "open_ports": len(ports),
-                        "engine": "shodan-internetdb"
+                        "uphosts": "1", "downhosts": "0", "totalhosts": "1",
+                        "open_ports": len(ports), "engine": "shodan-internetdb"
                     }
                 else:
                     results["scan_stats"] = {
-                        "uphosts": "0", "downhosts": "1",
-                        "totalhosts": "1",
-                        "message": "No data found for this IP",
-                        "engine": "shodan-internetdb"
+                        "uphosts": "0", "totalhosts": "1",
+                        "message": "No data found", "engine": "shodan-internetdb"
                     }
-            except Exception as shodan_err:
-                logger.error(f"Shodan fallback also failed: {shodan_err}")
-                results["scan_stats"] = {"error": str(shodan_err)}
+            except Exception as se:
+                logger.error(f"Shodan fallback failed: {se}")
+                results["scan_stats"] = {"error": str(se), "engine": "error"}
 
         await db.scans.update_one({"id": scan_id}, {"$set": {"status": "completed", "results": results}})
 
@@ -975,6 +832,327 @@ async def get_dashboard_stats(current_user: str = Depends(get_current_user)):
 # ─────────────────────────────────────────────
 #  APP SETUP
 # ─────────────────────────────────────────────
+
+
+# ─────────────────────────────────────────────
+#  MULTI-TOOL SCANNER ENDPOINTS
+# ─────────────────────────────────────────────
+
+@api_router.post("/scan/tool")
+async def tool_scan(
+    request: ToolScanRequest,
+    background_tasks: BackgroundTasks,
+    current_user: str = Depends(get_current_user)
+):
+    """Run a security tool scan (nmap/nuclei/nikto/whatweb/zap)"""
+    try:
+        scan_id = str(uuid.uuid4())
+        scan_doc = {
+            "id": scan_id,
+            "user_id": current_user,
+            "target": request.target,
+            "scan_type": f"tool:{request.tool}",
+            "tool": request.tool,
+            "status": "running",
+            "results": {},
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        await db.scans.insert_one(scan_doc)
+        background_tasks.add_task(perform_tool_scan, scan_id, request.target, request.tool)
+        return {"scan_id": scan_id, "status": "started", "tool": request.tool}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def perform_tool_scan(scan_id: str, target: str, tool: str):
+    """Execute the requested security tool and store structured results"""
+    import subprocess, shutil, socket, ipaddress, re
+
+    results = {"tool": tool, "target": target, "output": [], "summary": {}, "findings": []}
+
+    try:
+        # Resolve to IP for private check
+        try:
+            ip = socket.gethostbyname(target.replace("http://","").replace("https://","").split("/")[0])
+        except Exception:
+            ip = target
+
+        try:
+            ip_obj = ipaddress.ip_address(ip)
+            if ip_obj.is_private or ip_obj.is_loopback:
+                results["summary"] = {"error": f"Private IP ({ip}) cannot be scanned from cloud server"}
+                await db.scans.update_one({"id": scan_id}, {"$set": {"status": "completed", "results": results}})
+                return
+        except ValueError:
+            pass
+
+        # ── NMAP ────────────────────────────────────────────────────────
+        if tool == "nmap":
+            if not shutil.which("nmap"):
+                raise Exception("nmap not installed")
+            cmd = ["nmap", "-Pn", "-T4", "-sV", "-sC", "--open", target]
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            raw = proc.stdout + proc.stderr
+
+            # Parse ports
+            findings = []
+            for line in raw.splitlines():
+                m = re.match(r"(\d+)/(\w+)\s+(\w+)\s+(\S+)\s*(.*)", line)
+                if m:
+                    findings.append({
+                        "port": m.group(1), "protocol": m.group(2),
+                        "state": m.group(3), "service": m.group(4),
+                        "version": m.group(5).strip(), "severity": "info"
+                    })
+
+            results["output"] = raw.splitlines()
+            results["findings"] = findings
+            results["summary"] = {
+                "total_ports": len(findings),
+                "open_ports": sum(1 for f in findings if f["state"] == "open"),
+                "tool_version": "Nmap 7.95"
+            }
+
+        # ── NUCLEI ──────────────────────────────────────────────────────
+        elif tool == "nuclei":
+            if not shutil.which("nuclei"):
+                # Nuclei not installed — provide install instructions
+                results["summary"] = {
+                    "status": "not_installed",
+                    "message": "Nuclei is not installed on this server",
+                    "install": "Run: go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest",
+                    "description": "Nuclei is a fast template-based vulnerability scanner. It finds CVEs, misconfigs, exposed admin panels, default credentials and security issues using community templates."
+                }
+                results["output"] = [
+                    "Nuclei - Fast & customizable vulnerability scanner",
+                    "Install: go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest",
+                    "Templates: https://github.com/projectdiscovery/nuclei-templates",
+                    "",
+                    "What Nuclei finds:",
+                    "  - CVE vulnerabilities",
+                    "  - Exposed admin panels (Jenkins, phpMyAdmin etc)",
+                    "  - Default credentials",
+                    "  - Misconfigurations",
+                    "  - Sensitive file exposures",
+                    "  - DNS misconfigurations",
+                    "  - SSL/TLS issues",
+                ]
+                await db.scans.update_one({"id": scan_id}, {"$set": {"status": "completed", "results": results}})
+                return
+
+            url = target if target.startswith("http") else f"http://{target}"
+            cmd = ["nuclei", "-u", url, "-severity", "critical,high,medium",
+                   "-silent", "-json", "-timeout", "10"]
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+
+            findings = []
+            for line in proc.stdout.splitlines():
+                try:
+                    import json as _json
+                    item = _json.loads(line)
+                    severity = item.get("info", {}).get("severity", "info")
+                    findings.append({
+                        "template": item.get("template-id", ""),
+                        "name": item.get("info", {}).get("name", ""),
+                        "severity": severity,
+                        "url": item.get("matched-at", ""),
+                        "description": item.get("info", {}).get("description", ""),
+                        "tags": item.get("info", {}).get("tags", []),
+                        "reference": item.get("info", {}).get("reference", []),
+                    })
+                except Exception:
+                    pass
+
+            results["output"] = proc.stdout.splitlines() + proc.stderr.splitlines()
+            results["findings"] = findings
+            results["summary"] = {
+                "total": len(findings),
+                "critical": sum(1 for f in findings if f["severity"] == "critical"),
+                "high": sum(1 for f in findings if f["severity"] == "high"),
+                "medium": sum(1 for f in findings if f["severity"] == "medium"),
+                "tool_version": "Nuclei"
+            }
+
+        # ── NIKTO ───────────────────────────────────────────────────────
+        elif tool == "nikto":
+            if not shutil.which("nikto"):
+                results["summary"] = {
+                    "status": "not_installed",
+                    "message": "Nikto is not installed on this server",
+                    "install": "Run: sudo apt install nikto",
+                    "description": "Nikto is an open-source web server scanner. It performs comprehensive tests against web servers for dangerous files/CGIs, outdated software, configuration issues and server problems."
+                }
+                results["output"] = [
+                    "Nikto - Web Server Scanner",
+                    "Install: sudo apt install nikto",
+                    "",
+                    "What Nikto finds:",
+                    "  - Dangerous files and CGIs",
+                    "  - Outdated server software",
+                    "  - Version-specific problems",
+                    "  - Default files and scripts",
+                    "  - HTTP server options",
+                    "  - Insecure headers (X-Frame-Options, HSTS etc)",
+                    "  - SSL certificate issues",
+                ]
+                await db.scans.update_one({"id": scan_id}, {"$set": {"status": "completed", "results": results}})
+                return
+
+            url = target if target.startswith("http") else f"http://{target}"
+            cmd = ["nikto", "-h", url, "-Format", "txt", "-timeout", "10", "-maxtime", "120"]
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=150)
+            raw = proc.stdout
+
+            findings = []
+            for line in raw.splitlines():
+                if line.startswith("+"):
+                    severity = "high" if any(k in line.lower() for k in ["vulnerable", "critical", "xss", "sql", "injection"]) else                                "medium" if any(k in line.lower() for k in ["outdated", "server", "header", "found"]) else "info"
+                    findings.append({"message": line.lstrip("+ "), "severity": severity})
+
+            results["output"] = raw.splitlines()
+            results["findings"] = findings
+            results["summary"] = {
+                "total_findings": len(findings),
+                "high": sum(1 for f in findings if f["severity"] == "high"),
+                "medium": sum(1 for f in findings if f["severity"] == "medium"),
+                "info": sum(1 for f in findings if f["severity"] == "info"),
+                "tool_version": "Nikto"
+            }
+
+        # ── WHATWEB ─────────────────────────────────────────────────────
+        elif tool == "whatweb":
+            if not shutil.which("whatweb"):
+                results["summary"] = {
+                    "status": "not_installed",
+                    "message": "WhatWeb is not installed on this server",
+                    "install": "Run: sudo apt install whatweb",
+                    "description": "WhatWeb identifies website technologies including CMS, web frameworks, server software, analytics, JavaScript libraries, IP addresses, email addresses and more."
+                }
+                results["output"] = [
+                    "WhatWeb - Web Technology Fingerprinter",
+                    "Install: sudo apt install whatweb",
+                    "",
+                    "What WhatWeb detects:",
+                    "  - CMS (WordPress, Joomla, Drupal etc)",
+                    "  - Web frameworks (Laravel, Django, Rails etc)",
+                    "  - Server software (Apache, Nginx, IIS etc)",
+                    "  - JavaScript libraries (jQuery, React etc)",
+                    "  - Analytics platforms (Google Analytics etc)",
+                    "  - CDN providers (Cloudflare, Akamai etc)",
+                    "  - Email addresses and IP addresses",
+                    "  - Security headers",
+                ]
+                await db.scans.update_one({"id": scan_id}, {"$set": {"status": "completed", "results": results}})
+                return
+
+            url = target if target.startswith("http") else f"http://{target}"
+            cmd = ["whatweb", "-a", "3", "--log-verbose", "/dev/stdout", url]
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            raw = proc.stdout + proc.stderr
+
+            # Parse whatweb output for technologies
+            findings = []
+            tech_pattern = re.compile(r"(\w[\w\-\.]+)\[([^\]]+)\]")
+            for match in tech_pattern.finditer(raw):
+                tech_name = match.group(1)
+                tech_version = match.group(2)
+                if tech_name not in ["HTTP", "Country", "IP"]:
+                    findings.append({
+                        "technology": tech_name,
+                        "version": tech_version,
+                        "severity": "info"
+                    })
+
+            results["output"] = raw.splitlines()
+            results["findings"] = findings
+            results["summary"] = {
+                "technologies_found": len(findings),
+                "url": url,
+                "tool_version": "WhatWeb"
+            }
+
+        # ── OWASP ZAP ───────────────────────────────────────────────────
+        elif tool == "zap":
+            if not shutil.which("zap.sh") and not shutil.which("zaproxy"):
+                results["summary"] = {
+                    "status": "not_installed",
+                    "message": "OWASP ZAP is not installed on this server",
+                    "install": "Run: sudo apt install zaproxy  OR  download from https://www.zaproxy.org/download/",
+                    "description": "OWASP ZAP (Zed Attack Proxy) is one of the world's most popular free security tools for finding vulnerabilities in web applications. It finds SQL injection, XSS, CSRF, broken authentication and many more OWASP Top 10 issues."
+                }
+                results["output"] = [
+                    "OWASP ZAP - Web Application Security Scanner",
+                    "Install: sudo apt install zaproxy",
+                    "Or download from: https://www.zaproxy.org/download/",
+                    "",
+                    "What OWASP ZAP finds:",
+                    "  - SQL Injection",
+                    "  - Cross-Site Scripting (XSS)",
+                    "  - CSRF vulnerabilities",
+                    "  - Broken authentication",
+                    "  - Sensitive data exposure",
+                    "  - Security misconfigurations",
+                    "  - Insecure direct object references",
+                    "  - Broken access control",
+                    "  - All OWASP Top 10 vulnerabilities",
+                    "",
+                    "Note: ZAP requires significant memory (512MB+). For full scanning,",
+                    "use ZAP Desktop or API on a dedicated machine.",
+                ]
+                await db.scans.update_one({"id": scan_id}, {"$set": {"status": "completed", "results": results}})
+                return
+
+            url = target if target.startswith("http") else f"http://{target}"
+            zap_cmd = shutil.which("zap.sh") or shutil.which("zaproxy")
+            cmd = [zap_cmd, "-cmd", "-quickurl", url, "-quickprogress",
+                   "-quickout", "/tmp/zap_report.json"]
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+
+            # Try to read report
+            findings = []
+            try:
+                import json as _json
+                with open("/tmp/zap_report.json") as f:
+                    report = _json.load(f)
+                for site in report.get("site", []):
+                    for alert in site.get("alerts", []):
+                        risk = alert.get("riskdesc", "informational").lower().split()[0]
+                        findings.append({
+                            "name": alert.get("alert", ""),
+                            "severity": risk,
+                            "description": alert.get("desc", ""),
+                            "solution": alert.get("solution", ""),
+                            "url": alert.get("instances", [{}])[0].get("uri", ""),
+                            "cweid": alert.get("cweid", ""),
+                            "reference": alert.get("reference", ""),
+                        })
+            except Exception:
+                pass
+
+            results["output"] = proc.stdout.splitlines() + proc.stderr.splitlines()
+            results["findings"] = findings
+            results["summary"] = {
+                "total": len(findings),
+                "high": sum(1 for f in findings if f["severity"] == "high"),
+                "medium": sum(1 for f in findings if f["severity"] == "medium"),
+                "low": sum(1 for f in findings if f["severity"] == "low"),
+                "info": sum(1 for f in findings if f["severity"] in ["info", "informational"]),
+                "tool_version": "OWASP ZAP"
+            }
+
+        else:
+            results["summary"] = {"error": f"Unknown tool: {tool}"}
+
+        await db.scans.update_one({"id": scan_id}, {"$set": {"status": "completed", "results": results}})
+
+    except subprocess.TimeoutExpired:
+        results["summary"] = {"error": f"{tool} scan timed out"}
+        results["output"] = [f"Scan timed out after maximum allowed time"]
+        await db.scans.update_one({"id": scan_id}, {"$set": {"status": "completed", "results": results}})
+    except Exception as e:
+        logger.error(f"Tool scan error [{tool}]: {e}")
+        await db.scans.update_one({"id": scan_id}, {"$set": {"status": "failed", "error": str(e)}})
+
 
 app.include_router(api_router)
 

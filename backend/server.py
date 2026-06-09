@@ -975,7 +975,10 @@ async def perform_tool_scan(scan_id: str, target: str, tool: str):
 
         # ── NIKTO ───────────────────────────────────────────────────────
         elif tool == "nikto":
-            if not shutil.which("nikto"):
+            # Try multiple possible nikto locations
+            nikto_path = shutil.which("nikto") or "/usr/bin/nikto" or "/usr/local/bin/nikto"
+            import os
+            if not os.path.exists(nikto_path or "") and not shutil.which("nikto"):
                 results["summary"] = {
                     "status": "not_installed",
                     "message": "Nikto is not installed on this server",
@@ -999,7 +1002,8 @@ async def perform_tool_scan(scan_id: str, target: str, tool: str):
                 return
 
             url = target if target.startswith("http") else f"http://{target}"
-            cmd = ["nikto", "-h", url, "-Format", "txt", "-timeout", "10", "-maxtime", "120"]
+            nikto_bin = shutil.which("nikto") or "/usr/bin/nikto"
+            cmd = [nikto_bin, "-h", url, "-Format", "txt", "-timeout", "10", "-maxtime", "120", "-nointeractive"]
             proc = subprocess.run(cmd, capture_output=True, text=True, timeout=150)
             raw = proc.stdout
 

@@ -1,4 +1,5 @@
 /* Custom App Styles - Minimal to avoid conflicts */
+@import './animations.css';
 .App {
   min-height: 100vh;
   position: relative;

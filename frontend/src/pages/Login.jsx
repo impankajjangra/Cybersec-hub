@@ -6,37 +6,46 @@ import { loginRequest } from "../authConfig";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
+// Helper — always use sessionStorage so token clears on browser close
+const saveToken = (token) => {
+  sessionStorage.setItem('token', token);
+  localStorage.removeItem('token'); // ensure not in localStorage
+};
+
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { instance } = useMsal();
 
+  // Normal login
   const login = async () => {
     if (!email || !password) { alert("Please enter email and password"); return; }
     try {
       setLoading(true);
       const res = await axios.post(`${API}/auth/login`, { email, password });
-      localStorage.setItem("token", res.data.token);
+      saveToken(res.data.token);
       window.location.href = "/";
     } catch (err) {
       alert(err.response?.data?.detail || "Login failed");
     } finally { setLoading(false); }
   };
 
+  // Google login
   const googleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       try {
         const userInfo = await axios.get("https://www.googleapis.com/oauth2/v3/userinfo",
           { headers: { Authorization: `Bearer ${tokenResponse.access_token}` } });
         const res = await axios.post(`${API}/auth/microsoft`, { email: userInfo.data.email });
-        localStorage.setItem("token", res.data.token);
+        saveToken(res.data.token);
         window.location.href = "/";
       } catch (err) { alert("Google login failed. Please try again."); }
     },
     onError: () => alert("Google Login Failed"),
   });
 
+  // Microsoft login
   const microsoftLogin = () => instance.loginRedirect(loginRequest);
 
   return (
@@ -45,27 +54,17 @@ export default function Login() {
       justifyContent: 'center', padding: '16px', backgroundColor: '#050505'
     }}>
       <div style={{
-        width: '100%', maxWidth: '400px',
-        backgroundColor: '#0a0a0a',
-        border: '1px solid rgba(255,255,255,0.1)',
-        borderRadius: '4px', padding: '32px 24px'
+        width: '100%', maxWidth: '400px', backgroundColor: '#0a0a0a',
+        border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', padding: '32px 24px'
       }}>
-        <h1 style={{
-          fontSize: 'clamp(28px, 6vw, 40px)',
-          fontWeight: 'bold', color: 'white',
-          textAlign: 'center', letterSpacing: '4px',
-          marginBottom: '24px'
-        }}>
+        <h1 style={{ fontSize: 'clamp(28px, 6vw, 40px)', fontWeight: 'bold', color: 'white', textAlign: 'center', letterSpacing: '4px', marginBottom: '24px' }}>
           CYBER <span style={{ color: '#ef4444' }}>SEC</span>
         </h1>
 
-        <input placeholder="Email" type="email"
-          onChange={e => setEmail(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && login()}
-          style={inputStyle} />
+        <input placeholder="Email" type="email" onChange={e => setEmail(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && login()} style={inputStyle} />
 
-        <input placeholder="Password" type="password"
-          onChange={e => setPassword(e.target.value)}
+        <input placeholder="Password" type="password" onChange={e => setPassword(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && login()}
           style={{ ...inputStyle, marginBottom: '4px' }} />
 
@@ -113,6 +112,11 @@ export default function Login() {
             Create Account
           </button>
         </div>
+
+        {/* Session notice */}
+        <p style={{ color: '#3f3f46', fontSize: '10px', fontFamily: 'monospace', textAlign: 'center', marginTop: '16px' }}>
+          🔒 Session ends automatically when you close the browser
+        </p>
       </div>
     </div>
   );
@@ -120,23 +124,18 @@ export default function Login() {
 
 const inputStyle = {
   width: '100%', padding: '10px 12px', marginBottom: '12px',
-  backgroundColor: '#000', border: '1px solid #374151',
-  color: 'white', fontSize: '14px', borderRadius: '2px',
-  outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit'
+  backgroundColor: '#000', border: '1px solid #374151', color: 'white',
+  fontSize: '14px', borderRadius: '2px', outline: 'none',
+  boxSizing: 'border-box', fontFamily: 'inherit'
 };
-
 const primaryBtnStyle = {
-  width: '100%', padding: '11px',
-  backgroundColor: '#ef4444', color: 'white',
+  width: '100%', padding: '11px', backgroundColor: '#ef4444', color: 'white',
   border: 'none', borderRadius: '2px', cursor: 'pointer',
-  fontSize: '14px', fontFamily: 'monospace',
-  letterSpacing: '2px', textTransform: 'uppercase'
+  fontSize: '14px', fontFamily: 'monospace', letterSpacing: '2px', textTransform: 'uppercase'
 };
-
 const oauthBtnStyle = {
-  width: '100%', padding: '10px',
-  backgroundColor: 'white', color: 'black',
-  border: '1px solid #d1d5db', borderRadius: '4px',
-  cursor: 'pointer', fontSize: '13px', fontWeight: '500',
+  width: '100%', padding: '10px', backgroundColor: 'white', color: 'black',
+  border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer',
+  fontSize: '13px', fontWeight: '500',
   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'
 };

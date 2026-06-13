@@ -107,7 +107,7 @@ export default function Dashboard() {
     .map((s, i) => ({ name: `#${i + 1}`, 'Total Scans': i + 1 }));
 
   return (
-    <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '20px 16px' }}>
+    <div className="page-enter" style={{ maxWidth: '1400px', margin: '0 auto', padding: '20px 16px' }}>
 
       {/* Header */}
       <div style={{ marginBottom: '18px' }}>
@@ -127,14 +127,14 @@ export default function Dashboard() {
           { icon: Activity, label: 'Active Scans', value: stats?.active_scans || 0, color: '#10B981', bg: 'rgba(16,185,129,0.08)' },
           { icon: AlertTriangle, label: 'Risk Level', value: risk.level, color: risk.color, bg: 'rgba(255,255,255,0.03)' },
         ].map(({ icon: Icon, label, value, color, bg }) => (
-          <div key={label} style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '6px', padding: '14px' }}>
+          <div key={label} className="hover-lift" style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '6px', padding: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
               <div style={{ background: bg, padding: '6px', borderRadius: '4px' }}>
                 <Icon size={15} color={color} />
               </div>
               <span style={{ color: '#6b7280', fontSize: '9px', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '1px' }}>{label}</span>
             </div>
-            <div style={{ fontSize: 'clamp(18px, 2.5vw, 26px)', fontWeight: 'bold', fontFamily: 'monospace', color }}>{value}</div>
+            <div className="number-pop" style={{ fontSize: 'clamp(18px, 2.5vw, 26px)', fontWeight: 'bold', fontFamily: 'monospace', color }}>{value}</div>
           </div>
         ))}
       </div>

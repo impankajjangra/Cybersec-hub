@@ -20,7 +20,7 @@ export default function Profile() {
     window.addEventListener('resize', handleResize);
 
     // Get user info from token + fetch name from backend
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
@@ -51,7 +51,7 @@ export default function Profile() {
   };
 
   const handleLogout = () => {
-    localStorage.clear(); sessionStorage.clear();
+    sessionStorage.clear(); localStorage.clear();
     window.location.href = '/login';
   };
 

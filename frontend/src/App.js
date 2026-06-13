@@ -11,6 +11,7 @@ import ScanHistory from '@/pages/ScanHistory';
 import Profile from '@/pages/Profile';
 import AboutUs from '@/pages/AboutUs';
 
+import Landing from '@/pages/Landing';
 import Login from '@/pages/Login';
 import Signup from '@/pages/Signup';
 import VerifyOTP from '@/pages/VerifyOTP';
@@ -22,13 +23,26 @@ import Logout from './components/ui/Logout';
 import { Toaster } from '@/components/ui/sonner';
 
 const PrivateRoute = ({ children }) => {
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('token') || localStorage.getItem('token');
   if (!token) return <Navigate to="/login" replace />;
   return children;
 };
 
+// Root route — shows Landing page for guests, Dashboard for logged-in users
+const HomeRoute = ({ children }) => {
+  const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+  if (!token) return <Navigate to="/landing" replace />;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    if (!payload.sub) return <Navigate to="/landing" replace />;
+  } catch {
+    return <Navigate to="/landing" replace />;
+  }
+  return children;
+};
+
 const PublicRoute = ({ children }) => {
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('token') || localStorage.getItem('token');
   if (token) {
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
@@ -38,7 +52,7 @@ const PublicRoute = ({ children }) => {
   return children;
 };
 
-const PUBLIC_PATHS = ['/login', '/signup', '/verify', '/logout', '/reset-password', '/reset-verify'];
+const PUBLIC_PATHS = ['/landing', '/login', '/signup', '/verify', '/logout', '/reset-password', '/reset-verify'];
 
 function Layout({ sidebarOpen, setSidebarOpen, isMobile, children }) {
   const location = useLocation();
@@ -90,8 +104,10 @@ export default function App() {
             <Route path="/reset-password" element={<PublicRoute><ResetPassword /></PublicRoute>} />
             <Route path="/reset-verify"   element={<ResetVerifyOTP />} />
 
+            <Route path="/landing"     element={<Landing />} />
+
             {/* Protected */}
-            <Route path="/"           element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+            <Route path="/"           element={<HomeRoute><Dashboard /></HomeRoute>} />
             <Route path="/scanner"    element={<PrivateRoute><NetworkScanner /></PrivateRoute>} />
             <Route path="/osint"      element={<PrivateRoute><OSINTPage /></PrivateRoute>} />
             <Route path="/threats"    element={<PrivateRoute><ThreatDetection /></PrivateRoute>} />
@@ -100,7 +116,7 @@ export default function App() {
             <Route path="/profile"    element={<PrivateRoute><Profile /></PrivateRoute>} />
             <Route path="/about"      element={<PrivateRoute><AboutUs /></PrivateRoute>} />
 
-            <Route path="*" element={<Navigate to="/login" replace />} />
+            <Route path="*" element={<Navigate to="/landing" replace />} />
           </Routes>
         </Layout>
       </BrowserRouter>

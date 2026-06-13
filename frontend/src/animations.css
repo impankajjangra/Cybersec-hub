@@ -1,0 +1,252 @@
+/* ════════════════════════════════════════════════════════════
+   GLOBAL ANIMATIONS — CyberSec Hub
+   Add this import to App.css or index.css:
+   @import './animations.css';
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Smooth global transitions ─────────────────────────────── */
+* {
+  scroll-behavior: smooth;
+}
+
+body {
+  animation: fadeInBody 0.4s ease-out;
+}
+
+@keyframes fadeInBody {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ── Page transition (route changes) ───────────────────────── */
+.page-enter {
+  animation: pageSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes pageSlideIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Card / Panel hover lift ────────────────────────────────── */
+.hover-lift,
+[class*="rounded-sm"] {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.2s ease,
+              border-color 0.2s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* ── Button press effect ────────────────────────────────────── */
+button {
+  transition: transform 0.1s ease, opacity 0.15s ease, background-color 0.2s ease;
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+/* Subtle glow pulse on primary buttons */
+button.bg-\[\#FF3B30\]:hover,
+button[style*="background-color: rgb(255, 59, 48)"]:hover,
+a[style*="background: rgb(255, 59, 48)"]:hover {
+  box-shadow: 0 0 20px rgba(255, 59, 48, 0.4);
+}
+
+/* ── Click ripple effect ─────────────────────────────────────── */
+.ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ripple:active::after {
+  animation: rippleEffect 0.5s ease-out;
+}
+
+@keyframes rippleEffect {
+  0%   { transform: translate(-50%, -50%) scale(0);  opacity: 0.5; }
+  100% { transform: translate(-50%, -50%) scale(40); opacity: 0; }
+}
+
+/* ── Scroll-reveal fade-up (use with IntersectionObserver) ───── */
+.fade-up {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease-out, transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.fade-up.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Staggered children */
+.fade-up-stagger > * {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeUpStagger 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.fade-up-stagger > *:nth-child(1) { animation-delay: 0.05s; }
+.fade-up-stagger > *:nth-child(2) { animation-delay: 0.1s; }
+.fade-up-stagger > *:nth-child(3) { animation-delay: 0.15s; }
+.fade-up-stagger > *:nth-child(4) { animation-delay: 0.2s; }
+.fade-up-stagger > *:nth-child(5) { animation-delay: 0.25s; }
+.fade-up-stagger > *:nth-child(6) { animation-delay: 0.3s; }
+
+@keyframes fadeUpStagger {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Sidebar link hover slide ───────────────────────────────── */
+nav a, nav button {
+  transition: all 0.18s ease;
+}
+
+nav a:hover, nav button:hover {
+  transform: translateX(2px);
+}
+
+/* ── Spinner / Loader smoothness ────────────────────────────── */
+.animate-spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Pulse dot (system online indicator) ────────────────────── */
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); }
+  50%      { opacity: 0.7; box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+}
+
+.pulse-dot {
+  animation: pulseDot 2s ease-in-out infinite;
+}
+
+/* ── Number counter pop (dashboard stats) ───────────────────── */
+@keyframes numberPop {
+  0%   { transform: scale(0.8); opacity: 0; }
+  60%  { transform: scale(1.05); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.number-pop {
+  animation: numberPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ── Toast / alert slide-in ──────────────────────────────────── */
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+
+[data-sonner-toast] {
+  animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* ── Modal / Dialog zoom-in ──────────────────────────────────── */
+@keyframes modalZoomIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+[role="dialog"] {
+  animation: modalZoomIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Table row hover slide ──────────────────────────────────── */
+tr, .scan-row, .finding-row {
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+/* ── Sidebar collapse/expand smoothness (already has transition,
+       this adds easing) ───────────────────────────────────────── */
+aside, [style*="position: fixed"][style*="height: 100vh"] {
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* ── Loading skeleton shimmer ────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.03) 25%,
+    rgba(255,255,255,0.08) 50%,
+    rgba(255,255,255,0.03) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Input focus glow ─────────────────────────────────────────── */
+input, textarea, select {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input:focus, textarea:focus, select:focus {
+  box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.1);
+}
+
+/* ── Logo / Brand text hover (sidebar CYBERSEC) ─────────────── */
+.brand-text {
+  transition: letter-spacing 0.3s ease;
+}
+
+.brand-text:hover {
+  letter-spacing: 4px;
+}
+
+/* ── Severity badge pulse for critical ──────────────────────── */
+@keyframes criticalPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.4); }
+  50%      { box-shadow: 0 0 0 4px rgba(168, 85, 247, 0); }
+}
+
+.severity-critical {
+  animation: criticalPulse 1.8s ease-in-out infinite;
+}
+
+/* ── Chart container entrance ────────────────────────────────── */
+.recharts-wrapper {
+  animation: chartFadeIn 0.5s ease-out;
+}
+
+@keyframes chartFadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ── Disable animations for users who prefer reduced motion ──── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

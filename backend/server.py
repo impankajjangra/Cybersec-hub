@@ -851,7 +851,7 @@ async def tool_scan(
             "id": scan_id,
             "user_id": current_user,
             "target": request.target,
-            "scan_type": f"tool:{request.tool}",
+            "scan_type": f"{request.tool}",
             "tool": request.tool,
             "status": "running",
             "results": {},
@@ -1077,72 +1077,96 @@ async def perform_tool_scan(scan_id: str, target: str, tool: str):
 
         # ── OWASP ZAP ───────────────────────────────────────────────────
         elif tool == "zap":
-            if not shutil.which("zap.sh") and not shutil.which("zaproxy"):
+            # Use python-owasp-zap-v2.4 API if ZAP daemon is running
+            # Otherwise use subprocess with zaproxy
+            import json as _json
+
+            url = target if target.startswith("http") else f"http://{target}"
+
+            # Try zaproxy via subprocess
+            zap_cmd = shutil.which("zap.sh") or shutil.which("zaproxy") or shutil.which("zap")
+
+            if not zap_cmd:
                 results["summary"] = {
                     "status": "not_installed",
                     "message": "OWASP ZAP is not installed on this server",
-                    "install": "Run: sudo apt install zaproxy  OR  download from https://www.zaproxy.org/download/",
-                    "description": "OWASP ZAP (Zed Attack Proxy) is one of the world's most popular free security tools for finding vulnerabilities in web applications. It finds SQL injection, XSS, CSRF, broken authentication and many more OWASP Top 10 issues."
+                    "install": "sudo snap install zaproxy --classic",
+                    "description": "OWASP ZAP finds SQL Injection, XSS, CSRF, broken auth and all OWASP Top 10 vulnerabilities."
                 }
                 results["output"] = [
                     "OWASP ZAP - Web Application Security Scanner",
-                    "Install: sudo apt install zaproxy",
-                    "Or download from: https://www.zaproxy.org/download/",
+                    "Install via snap: sudo snap install zaproxy --classic",
+                    "Or download: https://www.zaproxy.org/download/",
                     "",
-                    "What OWASP ZAP finds:",
-                    "  - SQL Injection",
-                    "  - Cross-Site Scripting (XSS)",
-                    "  - CSRF vulnerabilities",
-                    "  - Broken authentication",
-                    "  - Sensitive data exposure",
-                    "  - Security misconfigurations",
-                    "  - Insecure direct object references",
-                    "  - Broken access control",
+                    "What ZAP finds:",
+                    "  - SQL Injection (CWE-89)",
+                    "  - Cross-Site Scripting - XSS (CWE-79)",
+                    "  - CSRF vulnerabilities (CWE-352)",
+                    "  - Broken Authentication",
+                    "  - Sensitive Data Exposure",
+                    "  - Security Misconfigurations",
+                    "  - Broken Access Control",
                     "  - All OWASP Top 10 vulnerabilities",
                     "",
-                    "Note: ZAP requires significant memory (512MB+). For full scanning,",
-                    "use ZAP Desktop or API on a dedicated machine.",
+                    "Note: ZAP needs 512MB+ RAM. On e2-micro, use nikto instead for lightweight web scanning.",
                 ]
                 await db.scans.update_one({"id": scan_id}, {"$set": {"status": "completed", "results": results}})
                 return
 
-            url = target if target.startswith("http") else f"http://{target}"
-            zap_cmd = shutil.which("zap.sh") or shutil.which("zaproxy")
-            cmd = [zap_cmd, "-cmd", "-quickurl", url, "-quickprogress",
-                   "-quickout", "/tmp/zap_report.json"]
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            report_path = f"/tmp/zap_report_{scan_id}.json"
+            cmd = [zap_cmd, "-cmd", "-quickurl", url,
+                   "-quickprogress", "-quickout", report_path,
+                   "-config", "connection.timeoutInSecs=10"]
 
-            # Try to read report
-            findings = []
             try:
-                import json as _json
-                with open("/tmp/zap_report.json") as f:
-                    report = _json.load(f)
-                for site in report.get("site", []):
-                    for alert in site.get("alerts", []):
-                        risk = alert.get("riskdesc", "informational").lower().split()[0]
-                        findings.append({
-                            "name": alert.get("alert", ""),
-                            "severity": risk,
-                            "description": alert.get("desc", ""),
-                            "solution": alert.get("solution", ""),
-                            "url": alert.get("instances", [{}])[0].get("uri", ""),
-                            "cweid": alert.get("cweid", ""),
-                            "reference": alert.get("reference", ""),
-                        })
-            except Exception:
-                pass
+                proc = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+                findings = []
 
-            results["output"] = proc.stdout.splitlines() + proc.stderr.splitlines()
-            results["findings"] = findings
-            results["summary"] = {
-                "total": len(findings),
-                "high": sum(1 for f in findings if f["severity"] == "high"),
-                "medium": sum(1 for f in findings if f["severity"] == "medium"),
-                "low": sum(1 for f in findings if f["severity"] == "low"),
-                "info": sum(1 for f in findings if f["severity"] in ["info", "informational"]),
-                "tool_version": "OWASP ZAP"
-            }
+                if os.path.exists(report_path):
+                    try:
+                        with open(report_path) as f:
+                            report = _json.load(f)
+                        for site in report.get("site", []):
+                            for alert in site.get("alerts", []):
+                                riskdesc = alert.get("riskdesc", "Informational")
+                                risk = riskdesc.lower().split()[0]
+                                severity = "high" if "high" in risk else "medium" if "medium" in risk else "low" if "low" in risk else "info"
+                                instances = alert.get("instances", [{}])
+                                findings.append({
+                                    "name": alert.get("alert", "Unknown"),
+                                    "severity": severity,
+                                    "description": alert.get("desc", "").replace("<p>","").replace("</p>"," ").strip(),
+                                    "solution": alert.get("solution", "").replace("<p>","").replace("</p>"," ").strip(),
+                                    "url": instances[0].get("uri", url) if instances else url,
+                                    "cweid": alert.get("cweid", ""),
+                                    "reference": alert.get("reference", ""),
+                                    "count": alert.get("count", "1"),
+                                })
+                        try:
+                            os.remove(report_path)
+                        except Exception:
+                            pass
+                    except Exception as parse_err:
+                        logger.error(f"ZAP report parse error: {parse_err}")
+
+                raw_lines = (proc.stdout + proc.stderr).splitlines()
+                results["output"] = raw_lines[:100]  # limit raw output
+                results["findings"] = findings
+                results["summary"] = {
+                    "total": len(findings),
+                    "high": sum(1 for f in findings if f["severity"] == "high"),
+                    "medium": sum(1 for f in findings if f["severity"] == "medium"),
+                    "low": sum(1 for f in findings if f["severity"] == "low"),
+                    "info": sum(1 for f in findings if f["severity"] == "info"),
+                    "target": url,
+                    "tool_version": "OWASP ZAP"
+                }
+                if not findings:
+                    results["output"].insert(0, f"ZAP scan completed for {url}. No alerts found or scan may need more time.")
+
+            except subprocess.TimeoutExpired:
+                results["summary"] = {"error": "ZAP scan timed out (5 min). Try a smaller target or use Nikto instead.", "tool_version": "OWASP ZAP"}
+                results["output"] = ["Scan timed out after 300 seconds"]
 
         else:
             results["summary"] = {"error": f"Unknown tool: {tool}"}

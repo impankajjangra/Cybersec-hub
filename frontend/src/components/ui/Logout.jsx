@@ -8,7 +8,7 @@ const Logout = () => {
         localStorage.clear();
         sessionStorage.clear();
 
-        navigate('/login');
+        navigate('/landing');
     }, [navigate]);
 
     return null;

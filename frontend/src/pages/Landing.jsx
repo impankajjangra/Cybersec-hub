@@ -171,7 +171,7 @@ export default function Landing() {
         textAlign: 'center',
       }}>
         <p style={{ color: '#3f3f46', fontSize: '11px', fontFamily: 'monospace', margin: '0 0 8px' }}>
-          © 2025 CyberSec Hub · B.Tech CSE Final Year Project
+         2026 CyberSec Hub · B.Tech CSE Final Year Project
         </p>
         <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
           <a href="/login" style={footerLink}>Login</a>

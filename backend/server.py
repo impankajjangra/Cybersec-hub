@@ -977,7 +977,6 @@ async def perform_tool_scan(scan_id: str, target: str, tool: str):
         elif tool == "nikto":
             # Try multiple possible nikto locations
             nikto_path = shutil.which("nikto") or "/usr/bin/nikto" or "/usr/local/bin/nikto"
-            import os
             if not os.path.exists(nikto_path or "") and not shutil.which("nikto"):
                 results["summary"] = {
                     "status": "not_installed",

@@ -10,6 +10,7 @@ import TelegramIntegration from '@/pages/TelegramIntegration';
 import ScanHistory from '@/pages/ScanHistory';
 import Profile from '@/pages/Profile';
 import AboutUs from '@/pages/AboutUs';
+import AdminPanel from '@/pages/AdminPanel';
 
 import Landing from '@/pages/Landing';
 import Login from '@/pages/Login';
@@ -130,6 +131,7 @@ export default function App() {
             <Route path="/history"    element={<PrivateRoute><ScanHistory /></PrivateRoute>} />
             <Route path="/profile"    element={<PrivateRoute><Profile /></PrivateRoute>} />
             <Route path="/about"      element={<PrivateRoute><AboutUs /></PrivateRoute>} />
+            <Route path="/admin"      element={<PrivateRoute><AdminPanel /></PrivateRoute>} />
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

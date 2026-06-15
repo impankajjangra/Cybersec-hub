@@ -1,12 +1,21 @@
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Activity, Radar, Search, Shield, ShieldOff,
   History, LogOut, Menu, X, ChevronLeft, ChevronRight,
-  User, Info
+  User, Info, ShieldCheck
 } from 'lucide-react';
+import api from '@/axiosConfig';
 
 const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
   const location = useLocation();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    api.get('/api/admin/check')
+      .then(res => setIsAdmin(res.data?.is_admin || false))
+      .catch(() => setIsAdmin(false));
+  }, []);
 
   const menuItems = [
     { path: '/',           icon: Activity,  label: 'Dashboard' },
@@ -18,6 +27,7 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
   ];
 
   const bottomItems = [
+    ...(isAdmin ? [{ path: '/admin', icon: ShieldCheck, label: 'Admin Panel' }] : []),
     { path: '/profile',  icon: User,   label: 'Profile' },
     { path: '/about',    icon: Info,   label: 'About Us' },
     { path: '/logout',   icon: LogOut, label: 'Logout' },
@@ -38,7 +48,9 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
   };
 
   const NavItem = ({ path, icon: Icon, label }) => {
-    const isActive = location.pathname === path;
+    const isActive = path === '/'
+      ? location.pathname === '/'
+      : location.pathname === path || location.pathname.startsWith(path + '/');
     return (
       <Link
         to={path}

@@ -386,6 +386,16 @@ const ToolResults = ({ tool, results }) => {
         </div>
       )}
 
+      {/* Informational message — e.g. ZAP couldn't reach target */}
+      {summary.message && !summary.error && (
+        <div className="p-4 bg-[#F59E0B]/8 border border-[#F59E0B]/25 rounded-sm">
+          <div className="flex items-start gap-3">
+            <AlertTriangle size={16} className="text-[#F59E0B] shrink-0 mt-0.5" />
+            <p className="font-mono text-xs text-[#F59E0B] leading-relaxed">{summary.message}</p>
+          </div>
+        </div>
+      )}
+
       {/* Findings */}
       {findings.length > 0 && (
         <div className="border border-white/8 rounded-sm overflow-hidden">

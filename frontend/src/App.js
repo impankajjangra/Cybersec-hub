@@ -28,17 +28,30 @@ const PrivateRoute = ({ children }) => {
   return children;
 };
 
-// Root route — shows Landing page for guests, Dashboard for logged-in users
+// Root route — renders Landing page directly for guests (no URL change),
+// renders Dashboard for logged-in users — both stay at "/"
 const HomeRoute = ({ children }) => {
   const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-  if (!token) return <Navigate to="/landing" replace />;
+  if (!token) return <Landing />;
   try {
     const payload = JSON.parse(atob(token.split('.')[1]));
-    if (!payload.sub) return <Navigate to="/landing" replace />;
+    if (!payload.sub) return <Landing />;
   } catch {
-    return <Navigate to="/landing" replace />;
+    return <Landing />;
   }
   return children;
+};
+
+// Helper — is the user currently logged in with a valid token?
+const isLoggedIn = () => {
+  const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+  if (!token) return false;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return !!payload.sub;
+  } catch {
+    return false;
+  }
 };
 
 const PublicRoute = ({ children }) => {
@@ -52,11 +65,12 @@ const PublicRoute = ({ children }) => {
   return children;
 };
 
-const PUBLIC_PATHS = ['/landing', '/login', '/signup', '/verify', '/logout', '/reset-password', '/reset-verify'];
+const PUBLIC_PATHS = ['/login', '/signup', '/verify', '/logout', '/reset-password', '/reset-verify'];
 
 function Layout({ sidebarOpen, setSidebarOpen, isMobile, children }) {
   const location = useLocation();
-  const hideSidebar = PUBLIC_PATHS.includes(location.pathname);
+  const isRootGuest = location.pathname === '/' && !isLoggedIn();
+  const hideSidebar = PUBLIC_PATHS.includes(location.pathname) || isRootGuest;
 
   if (hideSidebar) return <>{children}</>;
 
@@ -104,7 +118,8 @@ export default function App() {
             <Route path="/reset-password" element={<PublicRoute><ResetPassword /></PublicRoute>} />
             <Route path="/reset-verify"   element={<ResetVerifyOTP />} />
 
-            <Route path="/landing"     element={<Landing />} />
+            {/* Old /landing links redirect to root */}
+            <Route path="/landing"     element={<Navigate to="/" replace />} />
 
             {/* Protected */}
             <Route path="/"           element={<HomeRoute><Dashboard /></HomeRoute>} />
@@ -116,7 +131,7 @@ export default function App() {
             <Route path="/profile"    element={<PrivateRoute><Profile /></PrivateRoute>} />
             <Route path="/about"      element={<PrivateRoute><AboutUs /></PrivateRoute>} />
 
-            <Route path="*" element={<Navigate to="/landing" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Layout>
       </BrowserRouter>

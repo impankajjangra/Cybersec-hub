@@ -52,7 +52,7 @@ export default function Profile() {
 
   const handleLogout = () => {
     sessionStorage.clear(); localStorage.clear();
-    window.location.href = '/landing';
+    window.location.href = '/';
   };
 
   const navItems = [

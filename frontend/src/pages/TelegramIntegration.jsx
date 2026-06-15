@@ -100,8 +100,13 @@ const Telegram = () => {
     try {
       const response = await api.post('/api/telegram/leak_lookup', { query });
       setResults(response.data);
-      if (response.data.total_records > 0) toast.error(`⚠ ${response.data.total_records} leaked records found!`);
-      else toast.success("No leaked records found");
+      if (response.data.detail) {
+        toast.error(`API Error: ${response.data.detail}`);
+      } else if (response.data.total_records > 0) {
+        toast.error(`⚠ ${response.data.total_records} leaked records found!`);
+      } else {
+        toast.success("No leaked records found");
+      }
     } catch (error) {
       toast.error(error.response?.data?.detail || "Lookup failed");
     } finally { setLoading(false); }
@@ -203,10 +208,20 @@ const Telegram = () => {
             </div>
           )}
 
-          {results.total_records === 0 && (
+          {results.total_records === 0 && !results.detail && (
             <div className="flex items-center gap-3 p-4 bg-[#10B981]/10 border border-[#10B981]/30 rounded-sm">
               <Database size={20} className="text-[#10B981]" />
               <p className="font-mono text-sm text-[#10B981]">✓ No leaked records found. Your data appears to be safe.</p>
+            </div>
+          )}
+
+          {results.detail && (
+            <div className="flex items-start gap-3 p-4 bg-[#FF3B30]/10 border border-[#FF3B30]/30 rounded-sm">
+              <AlertTriangle size={20} className="text-[#FF3B30] shrink-0 mt-0.5" />
+              <div>
+                <p className="font-mono text-sm font-bold text-[#FF3B30]">API Error</p>
+                <p className="font-mono text-xs text-zinc-400 mt-1">{results.detail}</p>
+              </div>
             </div>
           )}
 

@@ -1,39 +1,30 @@
 import { useEffect, useRef } from 'react';
 
-/**
- * useScrollReveal — adds 'visible' class to elements with class 'fade-up'
- * when they enter the viewport. Used with animations.css .fade-up class.
- *
- * Usage:
- *   const containerRef = useScrollReveal();
- *   <div ref={containerRef}>
- *     <div className="fade-up">...</div>
- *     <div className="fade-up">...</div>
- *   </div>
- */
 export default function useScrollReveal() {
   const containerRef = useRef(null);
 
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const elements = container.querySelectorAll('.fade-up');
+    const container = containerRef.current || document;
+    const selectors = '.fade-up, .zigzag-left, .zigzag-right, .zigzag-up';
+    const elements = container.querySelectorAll(selectors);
 
     const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach((entry) => {
+        entries.forEach((entry, i) => {
           if (entry.isIntersecting) {
-            entry.target.classList.add('visible');
+            // Stagger delay based on position
+            const delay = parseFloat(entry.target.style.transitionDelay || '0');
+            setTimeout(() => {
+              entry.target.classList.add('visible');
+            }, delay * 1000);
             observer.unobserve(entry.target);
           }
         });
       },
-      { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
+      { threshold: 0.08, rootMargin: '0px 0px -30px 0px' }
     );
 
-    elements.forEach((el) => observer.observe(el));
-
+    elements.forEach(el => observer.observe(el));
     return () => observer.disconnect();
   }, []);
 

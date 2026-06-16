@@ -250,3 +250,264 @@ input:focus, textarea:focus, select:focus {
     scroll-behavior: auto !important;
   }
 }
+
+/* ════════════════════════════════════════════════════════════
+   LANDING + LOGIN PAGE — ADVANCED ANIMATIONS
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Animated gradient orbs (floating background blobs) ──────── */
+@keyframes floatOrb1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(40px, -30px) scale(1.1); }
+  66%      { transform: translate(-30px, 20px) scale(0.95); }
+}
+
+@keyframes floatOrb2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(-50px, 40px) scale(1.15); }
+}
+
+@keyframes floatOrb3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  40%      { transform: translate(30px, 30px) scale(0.9); }
+  70%      { transform: translate(-20px, -40px) scale(1.05); }
+}
+
+.orb-1 { animation: floatOrb1 18s ease-in-out infinite; }
+.orb-2 { animation: floatOrb2 22s ease-in-out infinite; }
+.orb-3 { animation: floatOrb3 26s ease-in-out infinite; }
+
+/* ── Animated grid background (cyber feel) ────────────────────── */
+@keyframes gridScroll {
+  from { background-position: 0 0; }
+  to   { background-position: 60px 60px; }
+}
+
+.cyber-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,59,48,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,59,48,0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+  animation: gridScroll 8s linear infinite;
+  pointer-events: none;
+  mask-image: radial-gradient(ellipse 60% 50% at 50% 30%, black 40%, transparent 100%);
+}
+
+/* ── Hero title slide-up entrance ─────────────────────────────── */
+@keyframes heroSlideUp {
+  from { opacity: 0; transform: translateY(40px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.hero-title {
+  animation: heroSlideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.hero-subtitle {
+  animation: heroSlideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+}
+.hero-cta {
+  animation: heroSlideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+}
+.hero-badge {
+  animation: heroSlideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0s both;
+}
+
+/* ── Zig-zag slide-in for feature rows (alternating L/R) ──────── */
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-60px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes slideInRightZ {
+  from { opacity: 0; transform: translateX(60px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes slideInUp {
+  from { opacity: 0; transform: translateY(50px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.zigzag-left {
+  opacity: 0;
+  transform: translateX(-60px);
+  transition: opacity 0.7s cubic-bezier(0.16,1,0.3,1), transform 0.7s cubic-bezier(0.16,1,0.3,1);
+}
+.zigzag-right {
+  opacity: 0;
+  transform: translateX(60px);
+  transition: opacity 0.7s cubic-bezier(0.16,1,0.3,1), transform 0.7s cubic-bezier(0.16,1,0.3,1);
+}
+.zigzag-up {
+  opacity: 0;
+  transform: translateY(50px);
+  transition: opacity 0.7s cubic-bezier(0.16,1,0.3,1), transform 0.7s cubic-bezier(0.16,1,0.3,1);
+}
+.zigzag-left.visible, .zigzag-right.visible, .zigzag-up.visible {
+  opacity: 1;
+  transform: translate(0, 0);
+}
+
+/* ── Floating icon bobbing ──────────────────────────────────────── */
+@keyframes floatBob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(-10px) rotate(3deg); }
+}
+
+.float-icon {
+  animation: floatBob 4s ease-in-out infinite;
+}
+.float-icon-delay1 { animation-delay: 0.5s; }
+.float-icon-delay2 { animation-delay: 1s; }
+.float-icon-delay3 { animation-delay: 1.5s; }
+
+/* ── Typing cursor blink (for typewriter text) ────────────────── */
+@keyframes blinkCursor {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.typing-cursor {
+  display: inline-block;
+  width: 3px;
+  background: #FF3B30;
+  margin-left: 4px;
+  animation: blinkCursor 0.8s step-end infinite;
+}
+
+/* ── Gradient text shimmer ─────────────────────────────────────── */
+@keyframes gradientShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.gradient-text {
+  background: linear-gradient(90deg, #FF3B30, #f97316, #FF3B30, #a855f7, #FF3B30);
+  background-size: 300% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: gradientShift 6s ease infinite;
+}
+
+/* ── 3D tilt card on hover ─────────────────────────────────────── */
+.tilt-card {
+  transition: transform 0.4s cubic-bezier(0.16,1,0.3,1), box-shadow 0.4s ease, border-color 0.3s ease;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.tilt-card:hover {
+  transform: perspective(800px) rotateX(4deg) rotateY(-4deg) translateY(-6px) scale(1.02);
+  box-shadow: 0 20px 50px rgba(255,59,48,0.12), 0 0 0 1px rgba(255,59,48,0.15);
+}
+
+/* ── Marquee scroll (tech stack infinite scroll) ────────────────── */
+@keyframes marqueeScroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+.marquee-track {
+  display: flex;
+  gap: 10px;
+  width: max-content;
+  animation: marqueeScroll 30s linear infinite;
+}
+
+.marquee-wrapper {
+  overflow: hidden;
+  position: relative;
+  mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
+}
+
+.marquee-wrapper:hover .marquee-track {
+  animation-play-state: paused;
+}
+
+/* ── Scanning line sweep (radar feel) ─────────────────────────── */
+@keyframes scanSweep {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateY(100%); opacity: 0; }
+}
+
+.scan-sweep {
+  position: absolute;
+  left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, #FF3B30, transparent);
+  animation: scanSweep 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* ── Counter number rolling effect ────────────────────────────── */
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.count-animate {
+  animation: countUp 0.5s ease-out both;
+}
+
+/* ── Login page — animated background panels ────────────────── */
+@keyframes panelSlideIn {
+  from { opacity: 0; transform: translateX(-30px) scale(0.98); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+.login-panel-enter {
+  animation: panelSlideIn 0.6s cubic-bezier(0.16,1,0.3,1) both;
+}
+
+/* ── Glow border pulse for login card ─────────────────────────── */
+@keyframes borderGlow {
+  0%, 100% { border-color: rgba(255,59,48,0.15); box-shadow: 0 0 30px rgba(255,59,48,0.05); }
+  50%      { border-color: rgba(255,59,48,0.3); box-shadow: 0 0 50px rgba(255,59,48,0.12); }
+}
+
+.glow-card {
+  animation: borderGlow 4s ease-in-out infinite;
+}
+
+/* ── Particle dots floating up (login background) ────────────── */
+@keyframes particleFloat {
+  0%   { transform: translateY(100vh) translateX(0); opacity: 0; }
+  10%  { opacity: 0.6; }
+  90%  { opacity: 0.6; }
+  100% { transform: translateY(-10vh) translateX(20px); opacity: 0; }
+}
+
+.particle {
+  position: absolute;
+  bottom: 0;
+  width: 3px;
+  height: 3px;
+  background: #FF3B30;
+  border-radius: 50%;
+  animation: particleFloat linear infinite;
+  pointer-events: none;
+}
+
+/* ── Logo letter-by-letter reveal ─────────────────────────────── */
+@keyframes letterPop {
+  from { opacity: 0; transform: translateY(15px) scale(0.8); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.letter-pop {
+  display: inline-block;
+  animation: letterPop 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+
+/* ── Bouncing scroll-down indicator ───────────────────────────── */
+@keyframes bounceDown {
+  0%, 100% { transform: translateY(0); opacity: 0.4; }
+  50%      { transform: translateY(8px); opacity: 1; }
+}
+
+.scroll-indicator {
+  animation: bounceDown 1.8s ease-in-out infinite;
+}

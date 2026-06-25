@@ -138,9 +138,6 @@ export default function Login() {
             ))}
           </div>
 
-          <p style={{ color:'#3f3f46', fontFamily:'monospace', fontSize:'10px', marginTop:'32px', letterSpacing:'1px' }}>
-            B.TECH CSE PROJECT · DRONACHARYA COLLEGE
-          </p>
         </div>
       </div>
 

@@ -150,7 +150,7 @@ export default function Landing() {
 
       {/* Footer */}
       <footer style={{ borderTop:'1px solid rgba(255,255,255,0.06)', padding:'24px 20px', textAlign:'center', position:'relative', zIndex:5 }}>
-        <p style={{ color:'#3f3f46', fontSize:'11px', fontFamily:'monospace', margin:'0 0 8px' }}>© 2026 CyberSec Hub · B.Tech CSE Final Year Project</p>
+        <p style={{ color:'#3f3f46', fontSize:'11px', fontFamily:'monospace', margin:'0 0 8px' }}>© 2026 CyberSec Hub</p>
         <div style={{ display:'flex', gap:'16px', justifyContent:'center', flexWrap:'wrap' }}>
           <a href="/login" style={footerLink}>Login</a>
           <a href="/signup" style={footerLink}>Sign Up</a>

@@ -118,7 +118,9 @@ const Telegram = () => {
     : null;
 
   return (
-    <div className="max-w-[1600px] mx-auto p-4 md:p-6">
+    <div className="inner-page max-w-[1600px] mx-auto p-4 md:p-6" style={{ position: 'relative' }}>
+      <div className="page-orb-red" />
+      <div className="page-orb-purple" />
 
       <div className="mb-6">
         <h1 className="font-heading font-bold text-3xl md:text-5xl uppercase tracking-wider text-white mb-2">

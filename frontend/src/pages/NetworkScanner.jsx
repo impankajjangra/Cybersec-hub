@@ -118,7 +118,7 @@ const PortRow = ({ port, portInfo }) => {
 
   return (
     <div className="border-b border-white/5 last:border-0">
-      <div className="flex items-center gap-3 p-2 hover:bg-zinc-900/30 transition">
+      <div className="port-row flex items-center gap-3 p-2 hover:bg-zinc-900/30 transition">
         <span className="font-mono text-sm font-bold text-white w-14 shrink-0">{port}/tcp</span>
         <span className={`px-2 py-0.5 text-[10px] font-mono uppercase rounded-sm w-16 text-center shrink-0 ${stateStyle}`}>
           {portInfo.state}
@@ -406,7 +406,7 @@ const ToolResults = ({ tool, results }) => {
           </div>
           <div className="divide-y divide-white/5">
             {findings.map((f, i) => (
-              <div key={i} className="p-3 hover:bg-zinc-900/20 transition">
+              <div key={i} className="finding-card p-3 hover:bg-zinc-900/20 transition" style={{ animationDelay: `${i * 0.06}s` }}>
                 <div className="flex items-start gap-3">
                   <SeverityIcon level={f.severity} />
                   <div className="flex-1 min-w-0">
@@ -540,7 +540,9 @@ const NetworkScanner = () => {
   const toolResults = results?.results;
 
   return (
-    <div className="max-w-[1600px] mx-auto p-4 md:p-6">
+    <div className="inner-page max-w-[1600px] mx-auto p-4 md:p-6" style={{ position: 'relative' }}>
+      <div className="page-orb-red" />
+      <div className="page-orb-purple" />
 
       {/* Header */}
       <div className="mb-5">
@@ -566,7 +568,7 @@ const NetworkScanner = () => {
             key={tool.id}
             onClick={() => { setActiveTool(tool.id); setResults(null); }}
             style={{ borderColor: activeTool === tool.id ? tool.color : 'rgba(255,255,255,0.1)' }}
-            className={`flex items-center gap-2 px-3 py-2 rounded-sm border transition-all font-mono text-xs uppercase tracking-wider ${
+            className={`tool-badge flex items-center gap-2 px-3 py-2 rounded-sm border transition-all font-mono text-xs uppercase tracking-wider ${
               activeTool === tool.id ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'
             }`}
           >

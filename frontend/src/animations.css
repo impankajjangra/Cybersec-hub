@@ -511,3 +511,494 @@ input:focus, textarea:focus, select:focus {
 .scroll-indicator {
   animation: bounceDown 1.8s ease-in-out infinite;
 }
+
+/* ════════════════════════════════════════════════════════════
+   INNER PAGES — ANIMATIONS
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Page wrapper entrance ───────────────────────────────────── */
+.page-wrap {
+  animation: pageWrapIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes pageWrapIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Stat card pop ───────────────────────────────────────────── */
+.stat-card {
+  animation: statCardIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.stat-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+}
+.stat-card:nth-child(1) { animation-delay: 0.05s; }
+.stat-card:nth-child(2) { animation-delay: 0.10s; }
+.stat-card:nth-child(3) { animation-delay: 0.15s; }
+.stat-card:nth-child(4) { animation-delay: 0.20s; }
+@keyframes statCardIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Chart container slide-up ────────────────────────────────── */
+.chart-card {
+  animation: chartCardIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.chart-card:nth-child(1) { animation-delay: 0.2s; }
+.chart-card:nth-child(2) { animation-delay: 0.3s; }
+.chart-card:nth-child(3) { animation-delay: 0.4s; }
+@keyframes chartCardIn {
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Table row stagger ───────────────────────────────────────── */
+.table-row {
+  animation: rowSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition: background-color 0.15s ease;
+}
+.table-row:nth-child(1)  { animation-delay: 0.05s; }
+.table-row:nth-child(2)  { animation-delay: 0.10s; }
+.table-row:nth-child(3)  { animation-delay: 0.15s; }
+.table-row:nth-child(4)  { animation-delay: 0.20s; }
+.table-row:nth-child(5)  { animation-delay: 0.25s; }
+.table-row:nth-child(6)  { animation-delay: 0.30s; }
+.table-row:nth-child(7)  { animation-delay: 0.35s; }
+.table-row:nth-child(8)  { animation-delay: 0.40s; }
+@keyframes rowSlideIn {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Result card reveal ──────────────────────────────────────── */
+.result-card {
+  animation: resultIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.result-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255,59,48,0.3) !important;
+}
+.result-card:nth-child(1) { animation-delay: 0.05s; }
+.result-card:nth-child(2) { animation-delay: 0.12s; }
+.result-card:nth-child(3) { animation-delay: 0.19s; }
+.result-card:nth-child(4) { animation-delay: 0.26s; }
+.result-card:nth-child(5) { animation-delay: 0.33s; }
+@keyframes resultIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Sidebar nav item hover ──────────────────────────────────── */
+.nav-item {
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+.nav-item::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 0;
+  background: rgba(255,59,48,0.08);
+  border-radius: 0 4px 4px 0;
+  transition: width 0.2s ease;
+}
+.nav-item:hover::before { width: 100%; }
+.nav-item:hover { transform: translateX(3px); }
+
+/* ── Page heading slide-in ───────────────────────────────────── */
+.page-heading {
+  animation: headingIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes headingIn {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Badge / tag pop-in ──────────────────────────────────────── */
+.badge-pop {
+  animation: badgePop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes badgePop {
+  from { opacity: 0; transform: scale(0.7); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ── Scan button pulse (ready state) ────────────────────────── */
+@keyframes btnPulseReady {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,59,48,0.4); }
+  50%      { box-shadow: 0 0 0 8px rgba(255,59,48,0); }
+}
+.btn-pulse { animation: btnPulseReady 2s ease-in-out infinite; }
+
+/* ── Scan running radar sweep ────────────────────────────────── */
+@keyframes radarRotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.radar-spin { animation: radarRotate 2s linear infinite; }
+
+/* ── Results fade cascade ────────────────────────────────────── */
+@keyframes cascadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.cascade-item {
+  animation: cascadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.cascade-item:nth-child(1)  { animation-delay: 0.00s; }
+.cascade-item:nth-child(2)  { animation-delay: 0.06s; }
+.cascade-item:nth-child(3)  { animation-delay: 0.12s; }
+.cascade-item:nth-child(4)  { animation-delay: 0.18s; }
+.cascade-item:nth-child(5)  { animation-delay: 0.24s; }
+.cascade-item:nth-child(6)  { animation-delay: 0.30s; }
+.cascade-item:nth-child(7)  { animation-delay: 0.36s; }
+.cascade-item:nth-child(8)  { animation-delay: 0.42s; }
+.cascade-item:nth-child(9)  { animation-delay: 0.48s; }
+.cascade-item:nth-child(10) { animation-delay: 0.54s; }
+
+/* ── Orb float for inner pages (subtle) ─────────────────────── */
+.page-orb {
+  position: fixed; pointer-events: none; z-index: 0;
+  border-radius: 50%; filter: blur(60px);
+}
+.page-orb-1 {
+  top: -80px; right: -80px; width: 300px; height: 300px;
+  background: radial-gradient(circle, rgba(255,59,48,0.06) 0%, transparent 70%);
+  animation: floatOrb2 20s ease-in-out infinite;
+}
+.page-orb-2 {
+  bottom: -60px; left: -60px; width: 250px; height: 250px;
+  background: radial-gradient(circle, rgba(168,85,247,0.05) 0%, transparent 70%);
+  animation: floatOrb3 25s ease-in-out infinite;
+}
+
+/* ── About Us team card hover ────────────────────────────────── */
+.team-card {
+  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1),
+              box-shadow 0.3s ease, border-color 0.3s ease;
+  animation: resultIn 0.6s cubic-bezier(0.16,1,0.3,1) both;
+}
+.team-card:nth-child(1) { animation-delay: 0.1s; }
+.team-card:nth-child(2) { animation-delay: 0.2s; }
+.team-card:nth-child(3) { animation-delay: 0.3s; }
+.team-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,59,48,0.15);
+}
+
+/* ── Avatar ring pulse ───────────────────────────────────────── */
+@keyframes avatarRing {
+  0%,100% { box-shadow: 0 0 0 0 rgba(255,59,48,0.3); }
+  50%     { box-shadow: 0 0 0 8px rgba(255,59,48,0); }
+}
+.avatar-pulse { animation: avatarRing 3s ease-in-out infinite; }
+
+/* ── Search input focus glow ─────────────────────────────────── */
+.search-input:focus {
+  box-shadow: 0 0 0 3px rgba(255,59,48,0.12),
+              0 0 20px rgba(255,59,48,0.08) !important;
+}
+
+/* ── Finding row slide-right ─────────────────────────────────── */
+.finding-row {
+  animation: findingIn 0.35s cubic-bezier(0.16,1,0.3,1) both;
+  transition: background-color 0.15s ease;
+}
+.finding-row:nth-child(odd)  { animation-delay: calc(var(--i, 0) * 0.05s); }
+.finding-row:nth-child(even) { animation-delay: calc(var(--i, 0) * 0.05s + 0.025s); }
+@keyframes findingIn {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Loading shimmer for skeleton ────────────────────────────── */
+.shimmer-line {
+  height: 12px; border-radius: 4px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.03) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* ── Tool tab active indicator ───────────────────────────────── */
+.tool-tab {
+  transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+  position: relative; overflow: hidden;
+}
+.tool-tab::after {
+  content: '';
+  position: absolute; bottom: 0; left: 50%; right: 50%;
+  height: 2px; background: currentColor;
+  transition: left 0.2s ease, right 0.2s ease;
+}
+.tool-tab.active::after { left: 0; right: 0; }
+.tool-tab:hover { transform: translateY(-1px); }
+
+/* ── Admin table row hover ───────────────────────────────────── */
+.admin-row {
+  transition: background-color 0.15s ease, transform 0.15s ease;
+  animation: rowSlideIn 0.4s cubic-bezier(0.16,1,0.3,1) both;
+}
+.admin-row:hover {
+  background-color: rgba(255,59,48,0.04) !important;
+  transform: translateX(2px);
+}
+
+/* ════════════════════════════════════════════════════════════
+   INNER PAGE ANIMATIONS — Dashboard, Scanner, OSINT etc
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Page wrapper entrance ───────────────────────────────────── */
+.inner-page {
+  animation: innerPageIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes innerPageIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Stat card pop in ────────────────────────────────────────── */
+.stat-card {
+  animation: statCardIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.stat-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+}
+.stat-card:nth-child(1) { animation-delay: 0.05s; }
+.stat-card:nth-child(2) { animation-delay: 0.10s; }
+.stat-card:nth-child(3) { animation-delay: 0.15s; }
+.stat-card:nth-child(4) { animation-delay: 0.20s; }
+
+@keyframes statCardIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Chart container entrance ────────────────────────────────── */
+.chart-card {
+  animation: chartCardIn 0.6s cubic-bezier(0.16,1,0.3,1) both;
+}
+.chart-card:nth-child(1) { animation-delay: 0.2s; }
+.chart-card:nth-child(2) { animation-delay: 0.3s; }
+.chart-card:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes chartCardIn {
+  from { opacity: 0; transform: scale(0.97) translateY(10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ── List item slide in ──────────────────────────────────────── */
+.list-item-anim {
+  opacity: 0;
+  transform: translateX(-16px);
+  animation: listItemIn 0.4s cubic-bezier(0.16,1,0.3,1) forwards;
+}
+@keyframes listItemIn {
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Glow border on cards ────────────────────────────────────── */
+.glow-on-hover {
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease;
+}
+.glow-on-hover:hover {
+  border-color: rgba(255,59,48,0.3) !important;
+  box-shadow: 0 0 24px rgba(255,59,48,0.08);
+  transform: translateY(-2px);
+}
+
+/* ── Sidebar link active indicator sweep ────────────────────── */
+@keyframes activeSweep {
+  from { width: 0; opacity: 0; }
+  to   { width: 100%; opacity: 1; }
+}
+
+/* ── Scan progress bar ───────────────────────────────────────── */
+@keyframes scanProgress {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
+.scan-progress {
+  animation: scanProgress 2s cubic-bezier(0.4,0,0.2,1) both;
+}
+
+/* ── Tool badge pop ──────────────────────────────────────────── */
+.tool-badge {
+  transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
+}
+.tool-badge:hover, .tool-badge.active {
+  transform: scale(1.05) translateY(-1px);
+}
+.tool-badge:active {
+  transform: scale(0.96);
+}
+
+/* ── Port row slide in ───────────────────────────────────────── */
+.port-row {
+  opacity: 0;
+  transform: translateX(-10px);
+  animation: portRowIn 0.3s ease forwards;
+}
+@keyframes portRowIn {
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Finding card bounce in ──────────────────────────────────── */
+.finding-card {
+  animation: findingIn 0.4s cubic-bezier(0.34,1.2,0.64,1) both;
+}
+@keyframes findingIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── OSINT result slide in from right ───────────────────────── */
+.osint-result {
+  animation: osintSlideIn 0.45s cubic-bezier(0.16,1,0.3,1) both;
+}
+@keyframes osintSlideIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Team card 3D hover (About Us) ──────────────────────────── */
+.team-card {
+  transition: transform 0.4s cubic-bezier(0.16,1,0.3,1), box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.team-card:hover {
+  transform: perspective(600px) rotateY(-6deg) translateY(-6px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+}
+
+/* ── Avatar ring spin ────────────────────────────────────────── */
+@keyframes ringRotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.avatar-ring {
+  position: relative;
+}
+.avatar-ring::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: #FF3B30;
+  border-right-color: #FF3B30;
+  animation: ringRotate 3s linear infinite;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.team-card:hover .avatar-ring::before {
+  opacity: 1;
+}
+
+/* ── Leaked data severity flash ─────────────────────────────── */
+@keyframes severityFlash {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.severity-flash {
+  animation: severityFlash 1.5s ease-in-out 3;
+}
+
+/* ── Table row stagger ───────────────────────────────────────── */
+.table-row {
+  opacity: 0;
+  transform: translateY(8px);
+  animation: tableRowIn 0.35s ease forwards;
+}
+@keyframes tableRowIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Admin card slide in from bottom ───────────────────────── */
+.admin-card {
+  animation: adminCardIn 0.5s cubic-bezier(0.16,1,0.3,1) both;
+}
+.admin-card:nth-child(1) { animation-delay: 0.05s; }
+.admin-card:nth-child(2) { animation-delay: 0.10s; }
+.admin-card:nth-child(3) { animation-delay: 0.15s; }
+.admin-card:nth-child(4) { animation-delay: 0.20s; }
+.admin-card:nth-child(5) { animation-delay: 0.25s; }
+.admin-card:nth-child(6) { animation-delay: 0.30s; }
+
+@keyframes adminCardIn {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── User row highlight ──────────────────────────────────────── */
+.user-row {
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+.user-row:hover {
+  background-color: rgba(255,59,48,0.04) !important;
+  transform: translateX(2px);
+}
+
+/* ── Orb background for inner pages (subtle) ─────────────────── */
+.page-orb-red {
+  position: fixed; pointer-events: none; z-index: 0;
+  width: 300px; height: 300px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,59,48,0.06) 0%, transparent 70%);
+  filter: blur(40px);
+  top: -80px; right: -80px;
+  animation: floatOrb1 20s ease-in-out infinite;
+}
+.page-orb-purple {
+  position: fixed; pointer-events: none; z-index: 0;
+  width: 250px; height: 250px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(168,85,247,0.05) 0%, transparent 70%);
+  filter: blur(35px);
+  bottom: 0; left: -60px;
+  animation: floatOrb2 24s ease-in-out infinite;
+}
+
+/* ── Input shake on error ────────────────────────────────────── */
+@keyframes inputShake {
+  0%,100% { transform: translateX(0); }
+  20%,60% { transform: translateX(-6px); }
+  40%,80% { transform: translateX(6px); }
+}
+.input-error {
+  animation: inputShake 0.4s ease;
+  border-color: #FF3B30 !important;
+}
+
+/* ── Header slide down ───────────────────────────────────────── */
+.page-header {
+  animation: headerSlideDown 0.5s cubic-bezier(0.16,1,0.3,1) both;
+}
+@keyframes headerSlideDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── CTA button pulse ────────────────────────────────────────── */
+@keyframes ctaPulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(255,59,48,0.4); }
+  50%     { box-shadow: 0 0 0 8px rgba(255,59,48,0); }
+}
+.cta-pulse {
+  animation: ctaPulse 2.5s ease-in-out infinite;
+}
+
+/* ── Loading dots ────────────────────────────────────────────── */
+@keyframes dotBounce {
+  0%,80%,100% { transform: scale(0); opacity: 0.3; }
+  40% { transform: scale(1); opacity: 1; }
+}
+.dot-bounce { display: inline-flex; gap: 4px; }
+.dot-bounce span {
+  width: 6px; height: 6px; border-radius: 50%; background: currentColor;
+  animation: dotBounce 1.2s ease-in-out infinite;
+}
+.dot-bounce span:nth-child(2) { animation-delay: 0.16s; }
+.dot-bounce span:nth-child(3) { animation-delay: 0.32s; }

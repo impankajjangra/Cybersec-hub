@@ -1494,12 +1494,25 @@ async def admin_activity(limit: int = 50, admin: dict = Depends(get_current_admi
 
 app.include_router(api_router)
 
+# ── Secure CORS — only allow your actual domain ───────────────
+# Replace wildcard '*' with your exact frontend URL.
+# This prevents other websites from making API calls to your backend.
+_raw_origins = os.getenv("CORS_ORIGINS", "https://cybersechub.online").strip()
+if _raw_origins == "*":
+    # Fallback if env var still set to wildcard — use specific domain
+    _allowed_origins = [
+        "https://cybersechub.online",
+        "https://www.cybersechub.online",
+    ]
+else:
+    _allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=['*'],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_allowed_origins,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
 logging.basicConfig(

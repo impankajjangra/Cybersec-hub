@@ -107,7 +107,9 @@ export default function Dashboard() {
     .map((s, i) => ({ name: `#${i + 1}`, 'Total Scans': i + 1 }));
 
   return (
-    <div className="page-enter" style={{ maxWidth: '1400px', margin: '0 auto', padding: '20px 16px' }}>
+    <div className="inner-page" style={{ maxWidth: '1400px', margin: '0 auto', padding: '20px 16px', position: 'relative' }}>
+      <div className="page-orb-red" />
+      <div className="page-orb-purple" />
 
       {/* Header */}
       <div style={{ marginBottom: '18px' }}>
@@ -127,7 +129,7 @@ export default function Dashboard() {
           { icon: Activity, label: 'Active Scans', value: stats?.active_scans || 0, color: '#10B981', bg: 'rgba(16,185,129,0.08)' },
           { icon: AlertTriangle, label: 'Risk Level', value: risk.level, color: risk.color, bg: 'rgba(255,255,255,0.03)' },
         ].map(({ icon: Icon, label, value, color, bg }) => (
-          <div key={label} className="hover-lift" style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '6px', padding: '14px' }}>
+          <div key={label} className="stat-card chart-card glow-on-hover" style={{ background: "#0a0a0a", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "6px", padding: "14px",}}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
               <div style={{ background: bg, padding: '6px', borderRadius: '4px' }}>
                 <Icon size={15} color={color} />
@@ -143,7 +145,7 @@ export default function Dashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '10px', marginBottom: '10px' }}>
 
         {/* Threat Distribution Pie — includes medium */}
-        <div style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '6px', padding: '14px' }}>
+        <div className="chart-card glow-on-hover" style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '6px', padding: '14px' }}>
           <h3 style={{ color: 'white', fontSize: '11px', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '10px', margin: '0 0 10px' }}>
             Threat Distribution
           </h3>
@@ -165,7 +167,7 @@ export default function Dashboard() {
         </div>
 
         {/* Scan Status Bar */}
-        <div style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '6px', padding: '14px' }}>
+        <div className="chart-card glow-on-hover" style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '6px', padding: '14px' }}>
           <h3 style={{ color: 'white', fontSize: '11px', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 10px' }}>
             Scan Status ({allScans.length} total)
           </h3>
@@ -183,7 +185,7 @@ export default function Dashboard() {
         </div>
 
         {/* Scan Activity Area */}
-        <div style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '6px', padding: '14px' }}>
+        <div className="chart-card glow-on-hover" style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '6px', padding: '14px' }}>
           <h3 style={{ color: 'white', fontSize: '11px', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 10px' }}>
             Scan History (last {activityData.length})
           </h3>
@@ -222,7 +224,7 @@ export default function Dashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px' }}>
 
         {/* Recent Scans */}
-        <div style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '6px', padding: '14px' }}>
+        <div className="chart-card glow-on-hover" style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '6px', padding: '14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
             <Clock size={13} color="#FF3B30" />
             <h3 style={{ color: 'white', fontSize: '11px', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '2px', margin: 0 }}>
@@ -236,7 +238,7 @@ export default function Dashboard() {
               <div key={i} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '8px 10px', background: 'rgba(255,255,255,0.02)',
-                borderLeft: '2px solid #FF3B30', borderRadius: '0 3px 3px 0'
+                borderLeft: '2px solid #FF3B30', borderRadius: '0 3px 3px 0', animationDelay: `${i * 0.07}s`
               }}>
                 <div>
                   <div style={{ color: 'white', fontFamily: 'monospace', fontSize: '11px', fontWeight: 'bold' }}>{scan.target}</div>
@@ -256,7 +258,7 @@ export default function Dashboard() {
         </div>
 
         {/* Recent Threats */}
-        <div style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '6px', padding: '14px' }}>
+        <div className="chart-card glow-on-hover" style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '6px', padding: '14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
             <TrendingUp size={13} color="#F59E0B" />
             <h3 style={{ color: 'white', fontSize: '11px', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '2px', margin: 0 }}>

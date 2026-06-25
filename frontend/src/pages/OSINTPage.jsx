@@ -1,11 +1,14 @@
+import api from '@/axiosConfig';
 import { useState } from 'react';
+
 import { Search, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import api from '@/axiosConfig';
+
+
 
 const OSINTPage = () => {
   const [query, setQuery] = useState('');
@@ -22,7 +25,7 @@ const OSINTPage = () => {
     setLoading(true);
 
     try {
-      const response = await api.post('/api/osint/lookup', {
+      const response = await axios.post(`${API}/osint/lookup`, {
         query,
         query_type: queryType,
       });
@@ -48,7 +51,7 @@ const OSINTPage = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1">
-          <div className="bg-zinc-950/40 backdrop-blur-xl border border-white/10 rounded-sm p-5" data-testid="osint-config-panel">
+          <div className="glow-on-hover bg-zinc-950/40 backdrop-blur-xl border border-white/10 rounded-sm p-5" data-testid="osint-config-panel">
             <h2 className="font-heading font-semibold text-xl uppercase tracking-wide text-white/90 mb-4">
               Search Configuration
             </h2>
@@ -107,7 +110,7 @@ const OSINTPage = () => {
         </div>
 
         <div className="lg:col-span-2">
-          <div className="bg-zinc-950/40 backdrop-blur-xl border border-white/10 rounded-sm p-5" data-testid="osint-results-panel">
+          <div className="glow-on-hover bg-zinc-950/40 backdrop-blur-xl border border-white/10 rounded-sm p-5" data-testid="osint-results-panel">
             <h2 className="font-heading font-semibold text-xl uppercase tracking-wide text-white/90 mb-4">
               Intelligence Results
             </h2>

@@ -25,7 +25,7 @@ const OSINTPage = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API}/osint/lookup`, {
+      const response = await api.post(`/api/osint/lookup`, {
         query,
         query_type: queryType,
       });
@@ -41,7 +41,9 @@ const OSINTPage = () => {
   };
 
   return (
-    <div className="max-w-[1600px] mx-auto p-6" data-testid="osint-page">
+    <div className="inner-page max-w-[1600px] mx-auto p-6" style={{ position: "relative" }} data-testid="osint-page">
+      <div className="page-orb-red" />
+      <div className="page-orb-purple" />
       <div className="mb-8">
         <h1 className="font-heading font-bold text-5xl uppercase tracking-wider text-white mb-2">
           OSINT <span className="text-[#FF3B30]">INTELLIGENCE</span>
@@ -82,7 +84,7 @@ const OSINTPage = () => {
                   placeholder="Enter IP, domain, or email"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  className="bg-zinc-950/50 border-white/10 focus:border-[#FF3B30] text-white font-mono text-sm"
+                  onKeyDown={(e) => e.key === "Enter" && performLookup()} className="bg-zinc-950/50 border-white/10 focus:border-[#FF3B30] text-white font-mono text-sm"
                   data-testid="query-input"
                 />
               </div>

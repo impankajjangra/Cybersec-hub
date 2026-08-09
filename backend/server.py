@@ -56,10 +56,21 @@ def get_current_user(request: Request) -> str:
 
 
 def get_client_ip(request: Request) -> str:
-    """Get real client IP — checks X-Forwarded-For (set by Nginx) first."""
-    xff = request.headers.get("x-forwarded-for")
+    """Get real client IP. Nginx must pass headers:
+       proxy_set_header X-Real-IP remote_addr;
+       proxy_set_header X-Forwarded-For proxy_add_x_forwarded_for;
+    """
+    # X-Real-IP — most reliable single IP set by Nginx
+    real_ip = request.headers.get("x-real-ip", "").strip()
+    if real_ip and real_ip not in ("127.0.0.1", "::1"):
+        return real_ip
+    # X-Forwarded-For — may contain chain of IPs, first is the client
+    xff = request.headers.get("x-forwarded-for", "").strip()
     if xff:
-        return xff.split(",")[0].strip()
+        ip = xff.split(",")[0].strip()
+        if ip and ip not in ("127.0.0.1", "::1"):
+            return ip
+    # Direct connection (last resort)
     return request.client.host if request.client else "unknown"
 
 
@@ -824,7 +835,7 @@ async def leak_lookup(request: dict, current_user: str = Depends(get_current_use
                 severity = "critical" if record_count >= 20 else "high" if record_count >= 5 else "medium"
                 formatted_results.append({
                     "source": source_name, "records_found": record_count,
-                    "severity": severity, "sample_data": valid_records[:3]
+                    "severity": severity, "sample_data": valid_records
                 })
 
     except Exception as e:
